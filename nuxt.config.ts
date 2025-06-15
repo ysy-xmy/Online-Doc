@@ -7,6 +7,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   modules: [[
     '@pinia/nuxt',
+
     {
       autoImports: [
         // 自动引入 `defineStore()`
@@ -14,7 +15,8 @@ export default defineNuxtConfig({
         // 自动引入 `defineStore()` 并重命名为 `definePiniaStore()`
         ['defineStore', 'definePiniaStore'],
       ],
-    }],],
+    }],'nuxt-icon'
+  ],
   vite: {
     plugins: [
       tailwindcss(),

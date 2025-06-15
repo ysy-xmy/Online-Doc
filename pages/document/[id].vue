@@ -5,7 +5,8 @@
       class="document-textarea"
       placeholder="在这里开始编辑您的文档..."
     ></textarea>
-    333
+    <Doc-DocumentSidebar />
+
   </div>
 </template>
 

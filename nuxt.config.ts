@@ -26,4 +26,21 @@ export default defineNuxtConfig({
   components: {
     dirs: ['~/components']
   },
+  runtimeConfig: {
+    public: {
+      // API 基地址
+      apiBase: process.env.API_BASE_URL || 'https://api.example.com',
+      
+      // WebSocket 服务器地址
+      websocketUrl: process.env.WEBSOCKET_URL || 'ws://localhost:8080/ws'
+    }
+  },
+  // 也可以在这里配置 fetch 选项
+  nitro: {
+    routeRules: {
+      '/api/**': {
+        proxy: process.env.API_BASE_URL || 'https://api.example.com'
+      }
+    }
+  }
 })

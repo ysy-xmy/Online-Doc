@@ -26,13 +26,17 @@ export default defineNuxtConfig({
   components: {
     dirs: ['~/components']
   },
+  devServer: {
+    port: 3000,
+    host: 'localhost'
+  },
   runtimeConfig: {
     public: {
       // API 基地址
-      apiBase: process.env.API_BASE_URL || 'https://api.example.com',
+      apiBase: process.env.API_BASE_URL || 'http://8.134.200.53:1838',
       
       // WebSocket 服务器地址
-      websocketUrl: process.env.WEBSOCKET_URL || 'ws://localhost:8080/ws'
+      websocketUrl: process.env.WEBSOCKET_URL || 'ws://8.134.200.53:1838'
     }
   },
   // 也可以在这里配置 fetch 选项

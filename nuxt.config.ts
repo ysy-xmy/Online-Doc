@@ -44,6 +44,9 @@ export default defineNuxtConfig({
     routeRules: {
       '/api/**': {
         proxy: process.env.API_BASE_URL || 'https://api.example.com'
+      },
+      '/document/**': { 
+        proxy: process.env.API_BASE_URL || 'http://8.134.200.53:1838/document'
       }
     }
   }

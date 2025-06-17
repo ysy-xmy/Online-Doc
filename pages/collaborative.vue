@@ -38,7 +38,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { WebSocketService, WebSocketStatus } from '~/plugins/websocket'
+import { WebSocketService } from '~/plugins/websocket'
+import { documentApi } from '~/api/doc'
+import type { DocumentResponse, UpdateDocumentResponse } from '~/api/doc'
 
 // 定义接口
 interface Revision {
@@ -98,7 +100,7 @@ function generateChangeset(oldContent: string, newContent: string) {
 }
 
 // 发送文档更新
-function sendDocumentUpdate(newContent: string) {
+async function sendDocumentUpdate(newContent: string) {
   const changeset = generateChangeset(lastContent.value, newContent)
 
   // 安全检查 WebSocket 实例和状态
@@ -111,21 +113,23 @@ function sendDocumentUpdate(newContent: string) {
       })
 
       // HTTP 备用更新
-      $fetch(`${apiBase}/document`, {
-        method: 'POST',
-        body: { changeset }
-      }).then((data: unknown) => {
-        const revisionData = data as { revisionHistory: Revision[] }
+      try {
+        const { $fetchInstance } = useNuxtApp()
+        const revisionData = await $fetchInstance('/document', {
+          method: 'POST',
+          body: { changeset }
+        }) as UpdateDocumentResponse
+        
         saveStatus.value = '已保存'
         updateRevisionHistory(revisionData.revisionHistory)
         
         setTimeout(() => {
           saveStatus.value = ''
         }, 2000)
-      }).catch(error => {
+      } catch (error) {
         saveStatus.value = '保存失败'
         console.error('保存失败:', error)
-      })
+      }
 
       lastContent.value = newContent
     } catch (error) {
@@ -134,21 +138,23 @@ function sendDocumentUpdate(newContent: string) {
     }
   } else {
     // 如果 WebSocket 未连接，尝试通过 HTTP 保存
-    $fetch(`${apiBase}/document`, {
-      method: 'POST',
-      body: { changeset }
-    }).then((data: unknown) => {
-      const revisionData = data as { revisionHistory: Revision[] }
+    try {
+      const { $fetchInstance } = useNuxtApp()
+      const revisionData = await $fetchInstance('/document', {
+        method: 'POST',
+        body: { changeset }
+      }) as UpdateDocumentResponse
+      
       saveStatus.value = '已保存（HTTP）'
       updateRevisionHistory(revisionData.revisionHistory)
       
       setTimeout(() => {
         saveStatus.value = ''
       }, 2000)
-    }).catch(error => {
+    } catch (error) {
       saveStatus.value = '保存失败'
       console.error('HTTP 保存失败:', error)
-    })
+    }
   }
 }
 
@@ -167,7 +173,7 @@ function updateRevisionHistory(history: Revision[]) {
 }
 
 // 加载特定版本
-function loadVersion(uuid: string) {
+async function loadVersion(uuid: string) {
   // 安全检查 WebSocket 实例
   if (wsInstance.value) {
     try {
@@ -182,18 +188,20 @@ function loadVersion(uuid: string) {
     }
   } else {
     // HTTP 备用方案
-    $fetch(`${apiBase}/document/version/${uuid}`)
-      .then((data: unknown) => {
-        const versionData = data as { content: string }
-        if (textareaRef.value) {
-          textareaRef.value.value = versionData.content
-          lastContent.value = versionData.content
-        }
-      })
-      .catch(error => {
-        console.error('加载版本失败:', error)
-        alert('加载版本失败')
-      })
+    try {
+      const { $fetchInstance } = useNuxtApp()
+      const versionData = await $fetchInstance(`/document/version/${uuid}`, {
+        method: 'GET'
+      }) as DocumentResponse
+      
+      if (textareaRef.value) {
+        textareaRef.value.value = versionData.content
+        lastContent.value = versionData.content
+      }
+    } catch (error) {
+      console.error('加载版本失败:', error)
+      alert('加载版本失败')
+    }
   }
 }
 
@@ -210,10 +218,7 @@ const connectWebSocket = async () => {
 
     // 测试 HTTP 连接
     try {
-      const testResponse = await $fetch(apiBase + '/document', {
-        method: 'GET',
-        timeout: 5000 // 5秒超时
-      })
+      const testResponse = await documentApi.getDocument()
       console.log('HTTP 连接测试成功:', testResponse)
     } catch (httpError) {
       console.error('HTTP 连接测试失败:', httpError)
@@ -222,12 +227,6 @@ const connectWebSocket = async () => {
       if (httpError instanceof Error) {
         console.error('错误类型:', httpError.constructor.name)
         console.error('错误消息:', httpError.message)
-        
-        // 如果是 FetchError，打印更多细节
-        if ('response' in httpError) {
-          console.error('响应状态:', (httpError as any).response?.status)
-          console.error('响应文本:', (httpError as any).response?.statusText)
-        }
       }
       
       connectionStatus.value = '连接失败'

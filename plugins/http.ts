@@ -1,5 +1,4 @@
 import type { FetchOptions, FetchResponse } from 'ofetch'
-import type { H3Event } from 'h3'
 
 export default defineNuxtPlugin((nuxtApp) => {
   // 获取运行时配置的基地址

@@ -1,7 +1,41 @@
-import * as Y from 'yjs';
-import { QuillBinding } from 'y-quill';
-// ...
+import type { Doc, Text } from 'yjs';
+import type { QuillBinding } from 'y-quill';
+import type Quill from 'quill';
 
-const ydoc = new Y.Doc(); // y 文档对象，保存需要共享的数据
-const ytext = ydoc.getText('quill'); // 创建名为 quill 的 Text 对象
-const binding = new QuillBinding(ytext, quill); // 数据模型绑定
+export default defineNuxtPlugin((nuxtApp) => {
+  let Y: typeof import('yjs') | null = null;
+  let QuillBindingClass: typeof QuillBinding | null = null;
+  let ydoc: Doc | null = null;
+  let ytext: Text | null = null;
+
+  if (process.client) {
+    import('yjs').then((module) => {
+      Y = module;
+      ydoc = new Y.Doc();
+      ytext = ydoc.getText('quill');
+    });
+  }
+
+  return {
+    provide: {
+      createQuillBinding: async (quill: Quill) => {
+        if (process.client) {
+          if (!Y) {
+            const module = await import('yjs');
+            Y = module;
+            ydoc = new Y.Doc();
+            ytext = ydoc.getText('quill');
+          }
+          if (!QuillBindingClass) {
+            const bindingModule = await import('y-quill');
+            QuillBindingClass = bindingModule.QuillBinding;
+          }
+          if (ytext && QuillBindingClass) {
+            return new QuillBindingClass(ytext, quill);
+          }
+        }
+        return null;
+      }
+    }
+  }
+});

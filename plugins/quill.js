@@ -1,27 +1,54 @@
-import Quill from 'quill';
-import QuillCursors from 'quill-cursors';
-import 'quill/dist/quill.snow.css'; // 使用了 snow 主题色
+export default defineNuxtPlugin((nuxtApp) => {
+  let Quill = null;
+  let QuillCursors = null;
 
-// 使用 cursors 插件
-Quill.register('modules/cursors', QuillCursors);
+  if (process.client) {
+    // 动态导入
+    import('quill').then((module) => {
+      Quill = module.default;
+      import('quill-cursors').then((cursorsModule) => {
+        QuillCursors = cursorsModule.default;
+        Quill.register('modules/cursors', QuillCursors);
+      });
+    });
+  }
 
-const quill = new Quill(document.querySelector('#app'), {
-  modules: {
-    cursors: true,
-    toolbar: [
-      [{ header: [1, 2, false] }],
-      ['bold', 'italic', 'underline'],
-      ['image', 'code-block'],
-    ],
-    history: {
-      userOnly: true, // 用户自己实现历史记录
-    },
-  },
-  placeholder: '前端西瓜哥...',
-  theme: 'snow',
+  return {
+    provide: {
+      createQuill: async (element, options = {}) => {
+        if (process.client) {
+          // 确保模块已加载
+          if (!Quill) {
+            const module = await import('quill');
+            Quill = module.default;
+            await import('quill/dist/quill.snow.css');
+          }
+          if (!QuillCursors) {
+            const cursorsModule = await import('quill-cursors');
+            QuillCursors = cursorsModule.default;
+            Quill.register('modules/cursors', QuillCursors);
+          }
+
+          return new Quill(element, {
+            modules: {
+              cursors: true,
+              toolbar: [
+                [{ header: [1, 2, false] }],
+                ['bold', 'italic', 'underline'],
+                ['image', 'code-block'],
+              ],
+              history: {
+                userOnly: true,
+              },
+              ...options.modules
+            },
+            placeholder: '开始写作...',
+            theme: 'snow',
+            ...options
+          });
+        }
+        return null;
+      }
+    }
+  }
 });
-
-export default ({ app }, inject) => {
-  // 可以在这里进行全局Quill配置
-  inject('Quill', Quill);
-}

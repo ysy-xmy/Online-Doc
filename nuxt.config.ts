@@ -48,8 +48,10 @@ export default defineNuxtConfig({
       '/api/**': {
         proxy: process.env.API_BASE_URL || 'https://api.example.com'
       },
+      // 移除具体的文档代理，改用通用处理
       '/document/**': { 
-        proxy: process.env.API_BASE_URL || 'http://8.134.200.53:1838/document'
+        ssr: true,
+        static: true
       }
     }
   }

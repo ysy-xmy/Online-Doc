@@ -112,7 +112,7 @@ const renderRemoteCursors = () => {
   });
 };
 
-const debouncedRenderRemoteCursors = debounce(renderRemoteCursors, 50);
+const debouncedRenderRemoteCursors = debounce(renderRemoteCursors, 500);
 
 // 初始化编辑器和协同功能
 const initCollaborativeEditor = async () => {
@@ -328,6 +328,7 @@ onMounted(async () => {
 <style scoped>
 .editor {
   height: 400px;
+  max-width: 800px;
 }
 
 .remote-cursor {

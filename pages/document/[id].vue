@@ -1,12 +1,12 @@
 <template>
   <div class="document-editor">
-    <textarea 
+    <!-- <textarea 
       v-model="documentContent" 
       class="document-textarea"
       placeholder="在这里开始编辑您的文档..."
-    ></textarea>
+    ></textarea> -->
+    <Doc-yjsdemo/>
     <Doc-DocumentSidebar />
-
   </div>
 </template>
 

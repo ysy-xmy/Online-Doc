@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css','quill/dist/quill.snow.css'],
   modules: [[
     '@pinia/nuxt',
 
@@ -22,6 +22,9 @@ export default defineNuxtConfig({
       tailwindcss(),
     ]
   },
+  plugins: [
+    '~/plugins/quill.js'
+  ],
   // 添加组件自动导入
   components: {
     dirs: ['~/components']

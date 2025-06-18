@@ -1,5 +1,14 @@
 <template>
   <div class="w-64 bg-base-100 border-r border-base-content/10 p-4 shadow-sm">
+    <div class="mb-4">
+      <button class="flex items-center w-full px-3 py-2 rounded-lg text-base-content hover:bg-primary hover:text-primary-content transition font-semibold" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2" />
+          <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2" fill="none" />
+        </svg>
+        知识库
+      </button>
+    </div>
     <div class="mb-6">
       <h2 class="text-xl font-bold text-base-content flex items-center">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -42,6 +51,15 @@
             <li><a class="text-base-content hover:bg-primary hover:text-primary-content">回收站</a></li>
           </ul>
         </details>
+      </li>
+      <li>
+        <button class="flex items-center w-full px-3 py-2 rounded-lg text-base-content hover:bg-primary hover:text-primary-content transition font-semibold mt-1" type="button" @click="$router.push('/knowledge-base')">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2" />
+            <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2" fill="none" />
+          </svg>
+          知识库
+        </button>
       </li>
     </ul>
   </div>

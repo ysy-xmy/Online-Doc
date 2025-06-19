@@ -170,6 +170,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useNuxtApp } from '#app'
 
 const router = useRouter()
 const showModal = ref(false)
@@ -256,16 +257,38 @@ function selectCustomEmoji(emoji) {
   form.value.emoji = emoji
 }
 
-function onCreate() {
-  // 新建知识库，添加到 knowledgeList
-  knowledgeList.value.push({
-    emoji: form.value.emoji || generateEmojiFromName(form.value.name),
-    name: form.value.name,
-    desc: form.value.desc,
-    visibility: form.value.visibility
-  })
-  showModal.value = false
-  form.value = initialForm()
+const { $fetchInstance } = useNuxtApp()
+
+async function onCreate() {
+  try {
+    const payload = {
+      name: form.value.name,
+      description: form.value.desc,
+      icon: form.value.emoji || generateEmojiFromName(form.value.name),
+      visibility: form.value.visibility === 'public' ? 'PUBLIC' : 'PRIVATE'
+    }
+    const res = await $fetchInstance('/workspaces', {
+      method: 'POST',
+      body: payload
+    })
+    // 假设返回格式为 { code, message, data }
+    if (res && (res.code === 200 || res.success)) {
+      // 添加到 knowledgeList 或刷新列表
+      knowledgeList.value.push({
+        id: res.data.id || Date.now(),
+        emoji: res.data.icon,
+        name: res.data.name,
+        desc: res.data.description,
+        visibility: res.data.visibility
+      })
+      showModal.value = false
+      form.value = initialForm()
+    } else {
+      alert('创建失败：' + (res.message || '未知错误'))
+    }
+  } catch (e) {
+    alert('网络错误或服务器异常')
+  }
 }
 
 function onCancel() {

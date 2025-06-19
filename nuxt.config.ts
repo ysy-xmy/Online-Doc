@@ -57,6 +57,13 @@ export default defineNuxtConfig({
         ssr: true,
         static: true
       },
+    },
+    devProxy: {
+      '/api/**': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        prependPath: false
+      }
     }
   }
 })

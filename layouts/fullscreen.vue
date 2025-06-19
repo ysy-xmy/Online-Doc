@@ -4,14 +4,14 @@
     <aside
       class="document-sidebar-left bg-base-200 w-64 p-4 border-r border-base-content/10">
       <h2 class="text-lg font-bold mb-4 border-b border-base-content/10 pb-2">
-        文档目录
+        知识库名称
       </h2>
       <nav>
         <ul class="menu w-full">
-          <li><a class="active">第一章</a></li>
-          <li><a>第二章</a></li>
-          <li><a>第三章</a></li>
-          <li><a>附录</a></li>
+          <li><a class="active">知识库文件1</a></li>
+          <li><a>知识库文件2</a></li>
+          <li><a>知识库文件3</a></li>
+          <li><a>知识库文件4</a></li>
         </ul>
       </nav>
     </aside>

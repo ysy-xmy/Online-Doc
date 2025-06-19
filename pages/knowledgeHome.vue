@@ -59,10 +59,17 @@
       <div class="grid grid-cols-3 gap-6">
         <div 
           v-for="(item, idx) in knowledgeList" 
-          :key="idx" 
-          class="card card-bordered bg-gray  hover:bg-base-200	 hover:shadow-lg transition-all group border-3 border-base-200 shadow-2xs"
+          :key="item.id" 
+          class="card card-bordered bg-gray hover:bg-base-200 hover:shadow-lg transition-all group border-3 border-base-200 shadow-2xs relative"
           @click="goToDetail(item, idx)"
         >
+          <div class="absolute right-4 top-4 z-10">
+            <button class="btn btn-xs btn-circle bg-gray-200 hover:bg-red-500 text-gray-500 hover:text-white border-none transition-colors" @click.stop="openDeleteModal(item, idx)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-4 h-4">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M8 6v12a2 2 0 002 2h4a2 2 0 002-2V6m-6 0V4a2 2 0 012-2h0a2 2 0 012 2v2" />
+              </svg>
+            </button>
+          </div>
           <div class="card-body">
             <div class="flex justify-between items-center">
               <div class="text-3xl mb-2">{{ item.emoji }}</div>
@@ -164,6 +171,20 @@
         </form>
       </div>
     </div>
+
+    <!-- 删除确认弹窗 -->
+    <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div class="bg-base-100 rounded-xl shadow-xl w-full max-w-sm p-8 relative">
+        <h2 class="text-xl font-bold mb-6 flex items-center">
+          <span class="mr-2 text-red-500">⚠️</span>确认删除
+        </h2>
+        <p class="mb-6">你确定要删除知识库 <span class="font-bold">{{ deleteTarget?.name }}</span> 吗？此操作不可恢复。</p>
+        <div class="flex justify-end space-x-4">
+          <button class="btn btn-ghost" @click="showDeleteModal = false">取消</button>
+          <button class="btn btn-error" @click="confirmDelete">删除</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -174,6 +195,9 @@ import { useNuxtApp } from '#app'
 
 const router = useRouter()
 const showModal = ref(false)
+const showDeleteModal = ref(false)
+const deleteTarget = ref(null)
+const deleteTargetIdx = ref(-1)
 const initialForm = () => ({
   name: '',
   desc: '',
@@ -257,38 +281,17 @@ function selectCustomEmoji(emoji) {
   form.value.emoji = emoji
 }
 
-const { $fetchInstance } = useNuxtApp()
-
-async function onCreate() {
-  try {
-    const payload = {
-      name: form.value.name,
-      description: form.value.desc,
-      icon: form.value.emoji || generateEmojiFromName(form.value.name),
-      visibility: form.value.visibility === 'public' ? 'PUBLIC' : 'PRIVATE'
-    }
-    const res = await $fetchInstance('/workspaces', {
-      method: 'POST',
-      body: payload
-    })
-    // 假设返回格式为 { code, message, data }
-    if (res && (res.code === 200 || res.success)) {
-      // 添加到 knowledgeList 或刷新列表
-      knowledgeList.value.push({
-        id: res.data.id || Date.now(),
-        emoji: res.data.icon,
-        name: res.data.name,
-        desc: res.data.description,
-        visibility: res.data.visibility
-      })
-      showModal.value = false
-      form.value = initialForm()
-    } else {
-      alert('创建失败：' + (res.message || '未知错误'))
-    }
-  } catch (e) {
-    alert('网络错误或服务器异常')
-  }
+function onCreate() {
+  // 本地模拟添加知识库，不联调后端
+  knowledgeList.value.push({
+    id: Date.now(),
+    emoji: form.value.emoji || generateEmojiFromName(form.value.name),
+    name: form.value.name,
+    desc: form.value.desc,
+    visibility: form.value.visibility
+  })
+  showModal.value = false
+  form.value = initialForm()
 }
 
 function onCancel() {
@@ -300,11 +303,30 @@ function goToDetail(item, idx) {
   // 如果有唯一 id 字段建议用 item.id
   router.push(`/knowledgeBase/${idx}`)
 }
+
+function openDeleteModal(item, idx) {
+  deleteTarget.value = item
+  deleteTargetIdx.value = idx
+  showDeleteModal.value = true
+}
+
+function confirmDelete() {
+  if (deleteTargetIdx.value !== -1) {
+    knowledgeList.value.splice(deleteTargetIdx.value, 1)
+  }
+  showDeleteModal.value = false
+  deleteTarget.value = null
+  deleteTargetIdx.value = -1
+}
 </script>
 
 <style scoped>
 /* 如果需要添加自定义样式，可以在这里添加 */
 .card {
   transition: all 0.3s ease;
+}
+/* 垃圾桶按钮美化 */
+.btn-circle svg {
+  display: block;
 }
 </style> 

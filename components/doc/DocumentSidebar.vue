@@ -2,7 +2,7 @@
   <aside 
     class="document-sidebar-right absolute top-0 right-0 bottom-0 bg-base-200 border-l border-base-content/10 shadow-xl transition-all duration-500 ease-in-out z-50"
     :class="{ 
-      'w-80': show, 
+      'w-84': show, 
       'w-0': !show 
     }"
   >
@@ -42,7 +42,7 @@
         </div>
 
         <!-- 选项卡内容 -->
-        <div class="p-4">
+        <div class="p-4 h-full">
           <Transition name="fade" mode="out-in">
             <component 
               :is="activeTabComponent" 

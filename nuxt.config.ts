@@ -52,7 +52,11 @@ export default defineNuxtConfig({
       '/document/**': { 
         ssr: true,
         static: true
-      }
+      },
+      '/knowledgeBase/**': { 
+        ssr: true,
+        static: true
+      },
     }
   }
 })

@@ -42,7 +42,7 @@
 
       <!-- 主内容插槽，占据剩余空间 -->
       <div class="flex-1 overflow-auto p-6 bg-base-200">
-        <div class="max-w-full mx-auto bg-base-100 rounded-xl shadow-md overflow-hidden">
+        <div class="max-w-full mx-auto bg-base-100 rounded-xl shadow-md overflow-hidden h-full">
           <slot />
         </div>
       </div>

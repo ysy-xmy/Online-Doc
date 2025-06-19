@@ -14,8 +14,8 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="doc in recentDocs" :key="doc.id" @click="openDocument(doc.id)">
-              <td>{{ doc.name }}</td>
+            <tr v-for="doc in recentDocs" :key="doc.id" @click="openDocument(doc.id)" class="cursor-pointer hover:bg-base-200 ">
+              <td class="hover:text-primary">{{ doc.name }}</td>
               <td>{{ doc.creator }}</td>
               <td>{{ doc.time }}</td>
               <td>

@@ -7,7 +7,7 @@
 
     <!-- 快捷操作卡片 -->
     <div class="grid grid-cols-3 gap-4 mb-8">
-      <div class="card card-compact bg-base-100 shadow-xl hover:bg-base-200 cursor-pointer transition-all">
+      <div class="card card-compact bg-base-100 shadow-xl hover:bg-base-200 cursor-pointer transition-all" @click="showCreateDocModal = true">
         <div class="card-body flex flex-row items-center">
           <div class="mr-4 text-3xl">📄</div>
           <div>
@@ -185,6 +185,50 @@
         </div>
       </div>
     </div>
+
+    <!-- 新建文档弹窗 -->
+    <div v-if="showCreateDocModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div class="bg-base-100 rounded-xl shadow-xl w-full max-w-md p-8 relative">
+        <button class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="onCancelDoc">
+          <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M6 18L18 6"/></svg>
+        </button>
+        <h2 class="text-xl font-bold mb-6 flex items-center">
+          <span class="mr-2">新建文档</span>
+        </h2>
+        <form @submit.prevent="onCreateDoc">
+          <div class="mb-4">
+            <label class="block text-base-content font-semibold mb-1">标题 <span class="text-red-500">*</span></label>
+            <input 
+              v-model="docForm.title" 
+              required 
+              maxlength="50" 
+              placeholder="请输入文档标题" 
+              class="input input-bordered w-full bg-base-100"
+            />
+          </div>
+          <div class="mb-4">
+            <label class="block text-base-content font-semibold mb-1">内容</label>
+            <textarea 
+              v-model="docForm.content" 
+              maxlength="1000" 
+              placeholder="请输入文档内容（可选）" 
+              class="textarea textarea-bordered w-full bg-base-100"
+              rows="5"
+            />
+          </div>
+          <div class="flex justify-end space-x-4">
+            <button type="button" class="btn btn-ghost" @click="onCancelDoc">取消</button>
+            <button 
+              type="submit" 
+              class="btn btn-primary" 
+              :disabled="!docForm.title"
+            >
+              创建
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -198,6 +242,11 @@ const showModal = ref(false)
 const showDeleteModal = ref(false)
 const deleteTarget = ref(null)
 const deleteTargetIdx = ref(-1)
+const showCreateDocModal = ref(false)
+const docForm = ref({
+  title: '',
+  content: ''
+})
 const initialForm = () => ({
   name: '',
   desc: '',
@@ -317,6 +366,26 @@ function confirmDelete() {
   showDeleteModal.value = false
   deleteTarget.value = null
   deleteTargetIdx.value = -1
+}
+
+function onCancelDoc() {
+  showCreateDocModal.value = false
+  docForm.value = { title: '', content: '' }
+}
+
+function onCreateDoc() {
+  // 这里只将文档添加到第一个知识库（可根据实际业务调整）
+  if (docForm.value.title) {
+    knowledgeList.value[0].docs.push({
+      id: Date.now(),
+      title: docForm.value.title,
+      author: '当前用户',
+      time: new Date().toLocaleString(),
+      desc: docForm.value.content?.slice(0, 30) || ''
+    })
+    showCreateDocModal.value = false
+    docForm.value = { title: '', content: '' }
+  }
 }
 </script>
 

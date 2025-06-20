@@ -1,9 +1,10 @@
 <template>
   <div class="timeline timeline-vertical">
-    <div 
-      v-for="(version, index) in history" 
-      :key="index"
-      class="timeline-item"
+    <div
+        v-for="(version, index) in history"
+        :key="index"
+        class="timeline-item"
+        @click="handleItemClick(version)"
     >
       <div class="timeline-start">{{ version.date }}</div>
       <div class="timeline-middle">
@@ -15,8 +16,16 @@
 </template>
 
 <script setup>
-const history = [
-  { date: '2023-06-14', description: '初始版本' },
-  { date: '2023-06-15', description: '第一次修改' }
-]
+import { ref, defineEmits } from 'vue';
+
+const emits = defineEmits(['version-click']);
+
+const history = ref([
+  { date: '2023-06-14', description: '初始版本', content: '初始内容' },
+  { date: '2023-06-15', description: '第一次修改', content: '初始内容aaa' }
+]);
+
+const handleItemClick = (version) => {
+  emits('version-click', version);
+};
 </script>

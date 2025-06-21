@@ -13,8 +13,6 @@
     "@duannx/vue-client-only": "^1.0.3",
     "@pinia/nuxt": "^0.11.1",
     "@tailwindcss/vite": "^4.1.10",
-    "@wangeditor/editor": "^5.1.23",
-    "@wangeditor/editor-for-vue": "^5.1.12",
     "axios": "^1.10.0",
     "daisyui": "^5.0.43",
     "nuxt": "^3.17.5",

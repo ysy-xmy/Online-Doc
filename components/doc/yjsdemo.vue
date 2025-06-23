@@ -11,7 +11,7 @@ const yjsModule = ref(null);
 const quillBindingModule = ref(null);
 const websocketModule = ref(null);
 const localUser = ref({
-    name: `用户_${Math.random().toString(36).substr(2, 9)}`,
+    name: `用户_${Math.random().toString(36).substr(2, 6)}`,
     color: `hsl(${Math.random() * 360}, 70%, 50%)`,
     timestamp: Date.now(),
     cursorPosition: null,
@@ -610,23 +610,6 @@ defineExpose({
     background-color: #e0e0e0;
 }
 
-.ql-formats button,
-.ql-formats select {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-    border: none !important;
-}
-
-.ql-formats button:hover,
-.ql-formats select:hover {
-    background-color: #f0f0f0;
-}
-
 .editor {
     flex: 1;
     min-height: 300px;
@@ -655,18 +638,5 @@ defineExpose({
 .ql-snow.ql-toolbar {
     border: none !important;
     padding: 0 !important;
-}
-
-.remote-cursor {
-    position: absolute;
-    pointer-events: none;
-}
-
-.remote-cursor-tooltip {
-    position: absolute;
-    padding: 2px 5px;
-    border-radius: 3px;
-    color: white;
-    font-size: 10px;
 }
 </style>

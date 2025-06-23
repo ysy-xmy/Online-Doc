@@ -27,7 +27,7 @@
             <div 
               :class="[
                 'chat-bubble', 
-                comment.author === '当前用户' ? 'chat-bubble-primary' : ''
+                comment.author === '当前用户' ? 'bg-primary text-primary-content' : 'bg-base-400 text-base-content'
               ]"
             >
               {{ comment.text }}
@@ -61,14 +61,14 @@
               {{ reply.author !== '当前用户' ? reply.author : '' }}
               <time class="text-xs opacity-50 ml-2">{{ reply.time }}</time>
             </div>
-            <div class="chat-bubble chat-bubble-primary">{{ reply.text }}</div>
+            <div class="chat-bubble bg-primary text-primary-content">{{ reply.text }}</div>
             
             <!-- 引用的原始消息 -->
             <div 
               v-if="reply.referencedText && reply.author === '当前用户'" 
-              class=" mt-1 ml-4 text-sm text-gray-400 flex flex-row p-2 rounded-lg bg-gray-100 max-w-[150px]"
+              class="mt-1 ml-4 text-sm flex flex-row p-2 rounded-lg bg-base-200 text-base-content max-w-[150px]"
             >
-              <div class="font-extrabold text-sm text-gray-500 mb-1 w-20 whitespace-nowrap">引用：</div>
+              <div class="font-extrabold text-sm text-base-content/70 mb-1 w-20 whitespace-nowrap">引用：</div>
               <div class="inline-block overflow-hidden break-all whitespace-nowrap text-ellipsis">{{ reply.referencedText }}</div>
             </div>
           </div>
@@ -77,12 +77,12 @@
     </div>
 
     <!-- 底部输入区域 -->
-    <div class="sticky bottom-0 left-0 right-0 p-2 border-t bg-white z-10">
+    <div class="sticky bottom-0 left-0 right-0 p-2 border-t bg-base-100 z-10">
       <div class="flex flex-col space-y-2">
         <!-- 引用提示 -->
         <div 
           v-if="currentReferencedText" 
-          class="bg-gray-100 p-2 rounded-lg text-sm text-gray-500 flex justify-between items-center"
+          class="bg-base-200 p-2 rounded-lg text-sm text-base-content flex justify-between items-center"
         >
           <span>
             <span class="font-bold">引用：</span>
@@ -90,13 +90,13 @@
           </span>
           <button 
             @click="clearReferencedComment" 
-            class="text-gray-400 hover:text-gray-600"
+            class="text-base-content/50 hover:text-base-content"
           >
             ✕
           </button>
         </div>
 
-        <div class="flex items-start space-x-2 bg-gray rounded-xl border-1 px-3 py-1">
+        <div class="flex items-start space-x-2 bg-base-200 rounded-xl border px-3 py-1">
           <!-- 表情按钮 -->
           <div class="relative">
             <button 
@@ -109,7 +109,7 @@
             <!-- 表情选择器 -->
             <div 
               v-if="showEmojiPicker" 
-              class="absolute bottom-full left-0 bg-white border rounded-lg p-2 grid grid-cols-5 gap-2 shadow-lg z-50 w-[250px]"
+              class="absolute bottom-full left-0 bg-base-100 border rounded-lg p-2 grid grid-cols-5 gap-2 shadow-lg z-50 w-[250px]"
               ref="emojiPickerRef"
               @click.stop
             >
@@ -117,7 +117,7 @@
                 v-for="emoji in emojis" 
                 :key="emoji"
                 @click="selectEmoji(emoji)"
-                class="text-2xl hover:bg-gray-100 rounded"
+                class="text-2xl hover:bg-base-200 rounded"
               >
                 {{ emoji }}
               </button>
@@ -127,7 +127,7 @@
           <!-- 主输入框 -->
           <textarea 
             v-model="mainComment"
-            class="flex-grow bg-transparent resize-none overflow-y-auto text-sm" 
+            class="flex-grow bg-transparent resize-none overflow-y-auto text-sm text-base-content" 
             placeholder="来评论吧"
             rows="1"
             @input="adjustTextareaHeight"
@@ -139,7 +139,7 @@
           <button 
             @click="addComment"
             :disabled="!mainComment.trim()"
-            class="text-blue-500 self-center hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer transition-colors duration-200"
+            class="text-primary self-center hover:text-primary-focus disabled:text-base-content/30 disabled:cursor-not-allowed cursor-pointer transition-colors duration-200"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" />
@@ -156,7 +156,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 // 表情列表
 const emojis = [
-  '😀', '😃', '😄', '��', '😆', 
+  '😀', '😃', '😄', '😅', '😆', 
   '😊', '😇', '🙂', '🙃', '😉',
   '❤️', '👍', '👏', '🎉', '🌟'
 ]
@@ -301,33 +301,23 @@ const comments = ref([
 </script>
 
 <style scoped>
-.chat-bubble-primary {
-  background-color: #3b82f6;
-  color: white;
-}
-
-/* 自定义输入框样式 */
+/* 只保留通用性样式，移除写死颜色 */
 textarea {
   outline: none;
-  max-height: 100px; /* 限制最大高度 */
+  max-height: 100px;
   line-height: 1.5;
   padding: 8px;
 }
-
-/* 隐藏默认滚动条，但保留滚动功能 */
 textarea::-webkit-scrollbar {
   width: 4px;
 }
-
 textarea::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 2px;
 }
-
 textarea::-webkit-scrollbar-track {
   background-color: transparent;
 }
-
 .chat-bubble {
   word-wrap: break-word;
   word-break: break-word;

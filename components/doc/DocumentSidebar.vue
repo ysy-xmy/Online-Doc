@@ -13,10 +13,7 @@
         @click="toggleSidebar"
       >
         <div class="p-1.5 flex items-center justify-center">
-          <Icon 
-            name="mdi:chevron-right"
-            class="h-6 w-6 text-base-content/70 hover:text-base-content"
-          />
+          <Icon name="mdi:arrow-right" class="h-8 w-8" />
         </div>
       </div>
 

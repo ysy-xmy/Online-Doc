@@ -10,7 +10,7 @@
     
     <Doc-DocumentSidebar v-model:show="showSidebar"/>
     <button @click="openSidebar" class='cursor-pointer absolute bottom-10 right-40 bg-gray-100 h-10 w-10 rounded-full'>
-      <Icon  name="mdi:comment-outline" />
+      <Icon :style="{ color: '#000' }"  name="mdi:comment-outline" class="text-xl"/>
     </button>
   </div>
 </template>

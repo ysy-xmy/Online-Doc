@@ -1,11 +1,19 @@
 <template>
   <div class="summary-panel" :class="{ 'visible': isVisible }">
     <div class="panel-header">
-      <h3>AI内容摘要</h3>
-      <button class="close-btn" @click="closePanel">×</button>
+      <h3>AI生成内容摘要</h3>
+      <!-- 折叠/展开按钮 -->
+      <div 
+        class="absolute top-1/2 -left-8 bg-base-300 rounded-l-lg shadow-md cursor-pointer transition-all duration-300 hover:bg-base-content/10"
+        @click="closePanel"
+      >
+        <div class="p-1.5 flex items-center justify-center">
+          <Icon name="mdi:arrow-right" class="h-8 w-8" />
+        </div>
+      </div>    
     </div>
     
-    <div class="panel-content">
+    <div class="panel-content ">
       <div v-if="error" class="error-state">{{ error }}</div>
       <template v-else>
         <div class="summary-box" ref="summaryBox" @scroll="handleScroll">
@@ -21,7 +29,6 @@
     </div>
     
     <div  class="panel-footer">
-      <div class="token-usage">Token 使用量: {{ aiTokenUsage }}</div>
       <span class="token-usage">字数: {{ summaryCharCount }}</span>
       <button class="copy-btn" @click="copySummary">复制摘要</button>
     </div>
@@ -31,11 +38,12 @@
 <script setup>
 import {  ref, onMounted } from 'vue'
 import useSummaryAI from '~/components/AI/useSummaryAI.js';
-
+import {documentApi} from '~/api/doc';
 
 // 定义响应式变量
 const summaries = ref([]);
 const documentContent = ref('报道提到，当被问及英国最终是否会允许美国飞机使用英国位于塞浦路斯和迪戈加西亚岛的军事基地但不提供任何其他支持时，哈曼回答说，“正是如此”。'); // 直接使用预设文本
+// const documentContent = ref('');
 const summaryBox = ref(null);
 const isLoading = ref(true);
 
@@ -69,11 +77,18 @@ watch(aiSummary, (newVal) => {
     isLoading.value = false
   }
 })
-
+watch(() => props.isVisible, (newVal) => {
+  if (newVal) {
+    generateAISummary(); // 面板打开时自动生成摘要
+  }
+});
 
 const generateAISummary = async () => { 
   try { 
     console.log('zhiwei:',documentContent.value)
+    // const response = await documentApi.getDocument()
+    // console.log(response)
+    // documentContent.value = response.data.content;
     await summarizeLongText(documentContent.value)
 
   } catch (error) { 
@@ -98,19 +113,17 @@ const copySummary = async () => {
     console.error('复制失败:', err)
   }
 }
-defineExpose({
-  generateAISummary
-});
 </script>
 
 <style scoped>
 .summary-panel {
-  position: fixed;
+  position: absolute;
   right: -400px;
   top: 0;
-  height: 100vh;
-  width: 380px;
-  background: white;
+  bottom: 0;
+  height: 90vh;
+  width: 21rem;
+  background: #f8f8f8;
   box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
   transition: right 0.3s ease;
   z-index: 998;

@@ -1,6 +1,11 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import { useDocumentStore } from "@/stores/document";
+
+import 'highlight.js/styles/atom-one-dark.min.css';
+import hljs from 'highlight.js/lib/common';
+
+
 // 响应式变量
 const quillEditor = ref(null);
 const floatingToolbar = ref(null);
@@ -155,6 +160,9 @@ const initCollaborativeEditor = async () => {
     quill = new quillModule.value.default(quillEditor.value, {
         theme: "snow",
         modules: {
+          syntax: {
+            hljs: hljs,  // 显式传递 hljs 实例
+          },
             toolbar: "#toolbar", // 指定工具栏
             history: {
                 delay: 1000,
@@ -499,6 +507,16 @@ defineExpose({
                     </select>
                 </div>
 
+              <div class="toolbar-divider"></div>
+
+              <div class="toolbar-group">
+                <select class="ql-font" title="字体">
+                  <option value="serif">衬线字体</option>
+                  <option value="monospace">等宽字体</option>
+                  <option selected>默认字体</option>
+                </select>
+              </div>
+
                 <div class="toolbar-divider"></div>
 
                 <div class="toolbar-group">
@@ -508,11 +526,20 @@ defineExpose({
                     <button class="ql-strike" title="删除线"></button>
                 </div>
 
+              <div class="toolbar-divider"></div>
+
+              <div class="toolbar-group">
+                <button class="ql-align" value="center" title="居中对齐"></button>
+                <button class="ql-align" value="right" title="右对齐"></button>
+                <button class="ql-align" value="justify" title="两端对齐"></button>
+              </div>
+
                 <div class="toolbar-divider"></div>
 
                 <div class="toolbar-group">
                     <select class="ql-color" title="文字颜色"></select>
                     <select class="ql-background" title="背景颜色"></select>
+                    <button class="ql-code-block" title="代码块">代码块</button>
                 </div>
             </div>
         </div>

@@ -79,7 +79,6 @@ const renderRemoteCursors = () => {
     if (!isClient || !quill || !websocketModule.value) return;
     // 清除之前的光标
     const existingCursors = document.querySelectorAll(".remote-cursor");
-    console.log(existingCursors);
     existingCursors.forEach((cursor) => cursor.remove());
 
     const allStates = awareness.getStates();
@@ -192,14 +191,10 @@ const initCollaborativeEditor = async () => {
 
     // 监听 Yjs 文本变更
     ytext.observe((event) => {
-        console.log("Yjs 文本变更事件:", event);
-
         // 只在有实际变更时才处理
         if (event.changes.delta && event.changes.delta.length > 0) {
-            console.log("检测到实际内容变更");
 
             const selection = quill.getSelection();
-            console.log("当前选择:", selection);
 
             // 更新用户状态
             const updatedUser = {
@@ -230,7 +225,6 @@ const initCollaborativeEditor = async () => {
                 awareness: provider.awareness,
             }
         );
-        console.log("QuillBinding 创建成功", binding);
     } catch (error) {
         console.error("QuillBinding 创建失败:", error);
     }
@@ -240,7 +234,6 @@ const initCollaborativeEditor = async () => {
 
     // 光标选择变化监听
     quill.on("selection-change", (range, oldRange, source) => {
-        console.log(range, "3");
 
         // 如果当前 range 为 null，尝试使用上一次的 range
         if (!range && userSelectionRange) {
@@ -302,9 +295,7 @@ const initCollaborativeEditor = async () => {
         );
 
         //allStates是所有用户的状态
-        console.log("🔗 Awareness 变化监听", allStates);
         //users是当前用户列表
-        console.log("当前用户列表:", users);
 
         // 获取当前用户信息
         getCurrentUserInfo();
@@ -423,7 +414,6 @@ const getCurrentUserInfo = () => {
 
     // 获取本地用户状态
     const localState = awareness.getLocalState();
-    console.log("本地用户状态:", localState);
     if (localState?.user) {
         documentStore.$patch({
             usersInfo: {

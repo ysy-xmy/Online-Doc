@@ -30,7 +30,7 @@ export const documentApi = {
     }
   },
 
-  // 更新文档内容
+  // 保存最新文档内容
   async updateDocument(changeset: string): Promise<UpdateDocumentResponse> {
     try {
       const { $fetchInstance } = useNuxtApp()
@@ -40,7 +40,7 @@ export const documentApi = {
       })
       return response as UpdateDocumentResponse
     } catch (error) {
-      console.error('更新文档内容失败', error)
+      console.error('保存最新文档内容失败', error)
       throw error
     }
   },
@@ -72,4 +72,60 @@ export const documentApi = {
       throw error
     }
   }
+
 }
+
+// 定义新的响应接口
+export interface DocumentOperationsResponse {
+  code: number;
+  data: {
+    operations: Array<{
+      operation: string;
+      content: string;
+      date: string;
+      description: string;
+    }>;
+  };
+}
+
+// 文档操作相关 API 方法
+export const documentOperationsApi = {
+  // 获取文档操作记录
+  async getDocumentOperations(documentId: string): Promise<DocumentOperationsResponse> {
+    try {
+      const { $fetchInstance } = useNuxtApp();
+      const response = await $fetchInstance(`/collaboration/documents/${documentId}/operations?fromSequence=0`, {
+        method: 'GET'
+      });
+      return response as DocumentOperationsResponse;
+    } catch (error) {
+      console.error('获取文档操作记录失败', error);
+      throw error;
+    }
+  },
+  // 记录并存储文档操作历史版本
+  async recordDocumentOperation(
+      documentId: string,
+      operationData: {
+        operation: string;
+        content: string;
+        date: string;
+        description: string;
+      }
+  ): Promise<DocumentOperationsResponse> {
+    try {
+      const { $fetchInstance } = useNuxtApp();
+      const response = await $fetchInstance(
+          `/collaboration/documents/${documentId}/operations`,
+          {
+            method: 'POST',
+            body: operationData
+          }
+      );
+      return response as DocumentOperationsResponse;
+    } catch (error) {
+      console.error('记录并存储新版本文档失败', error);
+      throw error;
+    }
+  }
+};

@@ -2,9 +2,10 @@
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
+    // 守卫组件
     compatibilityDate: "2025-05-15",
     devtools: { enabled: true },
-    css: ["~/assets/css/main.css",'quill/dist/quill.snow.css'],
+    css: ["~/assets/css/main.css", "quill/dist/quill.snow.css"],
     modules: [
         [
             "@pinia/nuxt",
@@ -51,12 +52,10 @@ export default defineNuxtConfig({
                     process.env.API_BASE_URL ||
                     "http://8.134.200.53:1838/document",
             },
-            "/Login": {
-                prerender: true,
-            },
-            "/Login/register": {
-                prerender: true,
-            },
+        },
+        // 完全禁用预渲染，避免Windows中文路径问题
+        prerender: {
+            ignore: ["**"],
         },
     },
 });

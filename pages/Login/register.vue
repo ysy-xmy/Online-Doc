@@ -6,6 +6,28 @@
                 <form class="space-y-4">
                     <div class="form-control">
                         <label class="label">
+                            <span class="label-text">选择头像</span>
+                        </label>
+                        <div class="avatar-grid">
+                            <div
+                                v-for="(avatar, index) in avatars"
+                                :key="index"
+                                class="avatar-item"
+                                :class="{
+                                    selected: selectedAvatar === avatar.id,
+                                }"
+                                @click="selectAvatar(avatar.id)"
+                            >
+                                <img
+                                    :src="avatar.src"
+                                    :alt="`头像 ${avatar.id}`"
+                                    class="avatar-image"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
                             <span class="label-text">用户名</span>
                         </label>
                         <input
@@ -14,6 +36,12 @@
                             class="input input-bordered w-full"
                             v-model="username"
                         />
+                        <div
+                            v-if="!username"
+                            class="text-error text-sm mt-1"
+                        >
+                            请输入用户名
+                        </div>
                     </div>
                     <div class="form-control">
                         <label class="label">
@@ -64,6 +92,7 @@
 </template>
 
 <script setup lang="ts">
+import md5 from "crypto-js/md5";
 // 设置布局为空白布局
 definePageMeta({
     layout: "blank",
@@ -75,6 +104,40 @@ import { ref, computed } from "vue";
 const username = ref("");
 const password = ref("");
 const confirmPassword = ref("");
+const selectedAvatar = ref(1); // 默认选择第一个头像
+const selectedAvatarUrl = ref(
+    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaorZgMPyu8LoRZ1DDdzcZR8DVWByDJI2xibafmUVeSSyIgZiboNWXMP9pun0OpmiciakV0ia6oyIcA27icLw/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1"
+); // 默认选择第一个
+
+// 头像列表
+const avatars = ref([
+    { id: 1, src: "/avatar_1.webp" }, //https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaorZgMPyu8LoRZ1DDdzcZR8DVWByDJI2xibafmUVeSSyIgZiboNWXMP9pun0OpmiciakV0ia6oyIcA27icLw/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1
+    { id: 2, src: "/avatar_2.webp" }, //https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaorZgMPyu8LoRZ1DDdzcZR8DCwKbZ5vzibiaDa6pS2tc5fZVfZiczNs245PVeWKmDadDCpD8cqKKXxicaA/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1
+    { id: 3, src: "/avatar_3.webp" }, //https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaopElicwU5r6yV2bFjYqDlGXRfPnibPnwnCR4uppdwhKKny9Tqiako19hiaBhQbfdHfYU7icAibbYj9s293g/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp
+    { id: 4, src: "/avatar_4.webp" }, //https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaopElicwU5r6yV2bFjYqDlGXRDbOI8gibWN5Z66Xpcby8vIv333c0xIv9v4rrRPHxSa8kU0mpyBxy6YA/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp
+    { id: 5, src: "/avatar_5.webp" }, //https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaop1ibyyyOs6FmBMIFicXsMajLHkYIldFK2cZchD0yHNsnmN0RjEBPobGjG873p3bibXuV3CMlbjFHl9A/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1
+    { id: 6, src: "/avatar_6.webp" }, //https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaop1ibyyyOs6FmBMIFicXsMajLQwxafe0IKOGpRXxoTPiaosDbkvgKvWoWrH5Dwnic3YU6DvawnCsPDJKQ/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp
+    { id: 7, src: "/avatar_7.webp" }, //https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaopElicwU5r6yV2bFjYqDlGXRD0XQBENcrNiatulyvRVg9OxanBThmyEkCn37KkVFPl2w4oryafcFCXA/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp
+    { id: 8, src: "/avatar_8.webp" }, //https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaookYhJGrEcjMTlgiafy5bg7PR2s0cl1jCyvVryic7fAPrcRwGDqHnVKowNic57ibwcL3enhjHa1GZleBw/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1
+]);
+
+// 头像URL列表
+const urlList = ref([
+    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaorZgMPyu8LoRZ1DDdzcZR8DVWByDJI2xibafmUVeSSyIgZiboNWXMP9pun0OpmiciakV0ia6oyIcA27icLw/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1",
+    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaorZgMPyu8LoRZ1DDdzcZR8DCwKbZ5vzibiaDa6pS2tc5fZVfZiczNs245PVeWKmDadDCpD8cqKKXxicaA/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1",
+    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaopElicwU5r6yV2bFjYqDlGXRfPnibPnwnCR4uppdwhKKny9Tqiako19hiaBhQbfdHfYU7icAibbYj9s293g/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp",
+    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaopElicwU5r6yV2bFjYqDlGXRDbOI8gibWN5Z66Xpcby8vIv333c0xIv9v4rrRPHxSa8kU0mpyBxy6YA/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp",
+    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaop1ibyyyOs6FmBMIFicXsMajLHkYIldFK2cZchD0yHNsnmN0RjEBPobGjG873p3bibXuV3CMlbjFHl9A/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1",
+    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaop1ibyyyOs6FmBMIFicXsMajLQwxafe0IKOGpRXxoTPiaosDbkvgKvWoWrH5Dwnic3YU6DvawnCsPDJKQ/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp",
+    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaopElicwU5r6yV2bFjYqDlGXRD0XQBENcrNiatulyvRVg9OxanBThmyEkCn37KkVFPl2w4oryafcFCXA/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp",
+    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaookYhJGrEcjMTlgiafy5bg7PR2s0cl1jCyvVryic7fAPrcRwGDqHnVKowNic57ibwcL3enhjHa1GZleBw/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1",
+]);
+
+// 选择头像函数(按ID选中URL)
+const selectAvatar = (avatarId: number) => {
+    selectedAvatar.value = avatarId;
+    selectedAvatarUrl.value = urlList.value[avatarId - 1];
+};
 
 const passwordError = computed(
     () =>
@@ -83,23 +146,89 @@ const passwordError = computed(
 );
 
 const handleRegister = () => {
+    //检查字段是否完整
     if (!username.value || !password.value || !confirmPassword.value) {
-        window.$toast?.error("请填写完整信息");
+        alert("请填写完整信息");
         return;
     }
+
+    //检查密码一致性
     if (password.value !== confirmPassword.value) {
-        window.$toast?.error("两次密码不一致");
+        alert("两次密码不一致");
         return;
     }
-    // TODO: 注册逻辑
-    console.log("username.value", username.value);
-    console.log("password.value", password.value);
-    //等后续接口开启在写
+
+    const data = JSON.stringify({
+        username: username.value,
+        password: md5(password.value).toString(), // 使用MD5加密密码
+        avatarId: selectedAvatarUrl.value, // 使用选中的头像ID
+    });
+
+    console.log("data", data);
+    // 发送注册请求到正确的接口
+    fetch("http://8.134.200.53:8080/api/auth/register", {
+        method: "POST",
+        body: data,
+        headers: {
+            "Content-Type": "application/json",
+            "Content-Length": data.length.toString(),
+        },
+    })
+        .then((res: any) => {
+            return res.json();
+        })
+        .then((res: any) => {
+            if (res.data.status === "ACTIVE") {
+                // 跳转到登录页面
+                navigateTo("/Login");
+            }
+        })
+        .catch((err) => {
+            // 弹出错误信息(前端后面再试)
+            console.log("err", err);
+        });
 };
 </script>
 
 <style scoped>
 .register-container {
     min-height: 100vh;
+}
+
+.avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.avatar-item {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+}
+
+.avatar-item:hover {
+    transform: scale(1.05);
+    border-color: #e0e0e0;
+}
+
+.avatar-item.selected {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.avatar-image {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
 }
 </style>

@@ -66,6 +66,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
+import md5 from "crypto-js/md5";
 // 设置布局为空白布局
 definePageMeta({
     layout: "blank",
@@ -80,6 +81,36 @@ const handleLogin = () => {
     console.log("username.value", username.value);
     console.log("password.value", password.value);
     // 等后续接口开启在写
+
+    const data = JSON.stringify({
+        usernameOrEmail: username.value,
+        password: md5(password.value).toString(),
+    });
+
+    fetch("http://8.134.200.53:8080/api/auth/login", {
+        method: "POST",
+        body: data,
+        headers: {
+            "Content-Type": "application/json",
+        },
+    })
+        .then((res) => {
+            return res.json();
+        })
+        .then((res) => {
+            if (res.code === "SUCCESS") {
+                // 存储token(用Cookie)
+                useCookie("token", {
+                    maxAge: res.data.expiresIn, // 设置过期时间(1天)
+                }).value = res.data.token;
+
+                // 跳转到主页面
+                navigateTo("/");
+            }
+        })
+        .catch((err) => {
+            console.log("err", err);
+        });
 };
 </script>
 

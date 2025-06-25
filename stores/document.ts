@@ -23,6 +23,13 @@ interface DocumentState {
         color: string;
         timestamp: number;
     };
+    allUsersList: {
+        userName: string;
+        clientID: string;
+        color: string;
+        // 是否是本地用户
+        isLocal: boolean;
+    }[];
 }
 
 // 定义store
@@ -41,6 +48,14 @@ export const useDocumentStore = defineStore("document", {
             clientID: "",
             timestamp: 0,
         },
+        allUsersList: [
+            {
+                userName: "",
+                clientID: "",
+                color: "",
+                isLocal: true,
+            },
+        ],
     }),
 
     actions: {

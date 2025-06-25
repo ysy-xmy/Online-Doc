@@ -6,7 +6,6 @@
           <select class="ql-header" title="标题">
             <option value="1">标题 1</option>
             <option value="2">标题 2</option>
-
             <option selected>正文</option>
           </select>
         </div>
@@ -33,12 +32,12 @@
 </template>
 
 <script setup>
-import {ref, onMounted, onUnmounted, nextTick} from "vue";
+import {ref, onMounted, onUnmounted, nextTick, watch, computed} from "vue";
+import { documentApi, documentOperationsApi } from '../../api/doc/index.js';
 // 响应式变量
 const quillEditor = ref(null);
 const floatingToolbar = ref(null);
 const isClient = process.client;
-// 定义响应式变量来存储动态导入的模块
 const quillModule = ref(null);
 const yjsModule = ref(null);
 const quillBindingModule = ref(null);
@@ -50,25 +49,35 @@ const localUser = ref({
   cursorPosition: null,
   cursorLength: 0,
 });
+
+// 编辑状态跟踪
 let userSelectionRange = null;
 let quill = null;
 let ydoc = null;
 let ytext = null;
 let provider = null;
 let awareness = null;
+let contentOutputInterval = null; // 定时器变量
+let lastSavedContent = null; // 保存的最后内容
+let isSaving = false; // 保存状态标志
+let editSessionStart = null; // 编辑会话开始时间
+let userEditCount = 0; // 用户编辑次数计数
+let lastChangeTime = null; // 最后变更时间
+let editTimer = null; // 编辑计时定时器
+
+// 保存策略配置
+const SAVE_THRESHOLD = 3; // 编辑次数阈值
+const TIME_THRESHOLD = 15000; // 时间阈值(15秒，便于测试)
 
 // 异步加载依赖
 const loadDependencies = async () => {
   if (!isClient) return;
 
   try {
-    // 动态导入依赖
     quillModule.value = await import("quill");
     yjsModule.value = await import("yjs");
     quillBindingModule.value = await import("y-quill");
     websocketModule.value = await import("y-websocket");
-
-    // 导入样式
     await import("quill/dist/quill.snow.css");
   } catch (error) {
     console.error("加载依赖时出错:", error);
@@ -83,13 +92,175 @@ const debounce = (func, delay) => {
     timeoutId = setTimeout(() => func(...args), delay);
   };
 };
+/**
+ * const saveDocument = debounce(async (force = false) => {
+ *   if (!isClient || !quill || isSaving) return;
+ *
+ *   isSaving = true;
+ *   try {
+ *     const currentEditCount = userEditCount;
+ *
+ *     // 检查是否满足保存条件：编辑次数达到阈值或强制保存
+ *     const shouldSave = force || currentEditCount >= SAVE_THRESHOLD;
+ *
+ *     if (shouldSave) {
+ *       // 获取当前文档内容
+ *       const currentContent = quill.getContents();
+ *       // 提取纯文本内容
+ *       const plainText = currentContent.ops.reduce((text, op) => {
+ *         if (typeof op.insert === 'string') {
+ *           return text + op.insert;
+ *         }
+ *         return text;
+ *       }, '');
+ *
+ *       console.log(`保存文档内容到数据库: 编辑次数 ${currentEditCount}`);
+ *       console.log(`保存的文档内容: ${plainText}`);
+ *       console.log(`完整内容数据:`, currentContent);
+ *
+ *       // 保存完整内容
+ *       lastSavedContent = JSON.stringify(currentContent);
+ *
+ *       // 保存后重置编辑计数
+ *       userEditCount = 0;
+ *       lastChangeTime = Date.now();
+ *     } else {
+ *       console.log(`编辑次数不足(${currentEditCount})，跳过保存`);
+ *     }
+ *   } catch (error) {
+ *     console.error('保存文档时出错:', error);
+ *   } finally {
+ *     isSaving = false;
+ *   }
+ * }, 500); // 防抖延迟500ms
+ */
+// 从URL路径中提取文档ID
+const getDocumentIdFromUrl = () => {
+  const pathSegments = window.location.pathname.split('/');
+  return pathSegments[pathSegments.length - 1];
+};
+// 保存文档内容
+const saveDocument = debounce(async (force = false) => {
+  if (!isClient || !quill || isSaving) return;
+
+  isSaving = true;
+  try {
+    const currentEditCount = userEditCount;
+    const shouldSave = force || currentEditCount >= SAVE_THRESHOLD;
+
+    if (shouldSave) {
+      // 获取当前文档内容
+      const currentContent = quill.getContents();
+      const plainText = currentContent.ops.reduce((text, op) => {
+        if (typeof op.insert === 'string') {
+          return text + op.insert;
+        }
+        return text;
+      }, '');
+
+      console.log(`保存文档内容: 编辑次数 ${currentEditCount}`);
+
+      // 1. 保存文档最新内容
+      const changeset = JSON.stringify(currentContent);
+      try {
+        // 更新文档内容
+        const updateResponse = await documentApi.updateDocument(changeset);
+        console.log('文档内容更新成功:', updateResponse);
+
+        if (updateResponse.success) {
+          lastSavedContent = changeset;
+          userEditCount = 0;
+          lastChangeTime = Date.now();
+
+          // 2. 记录操作历史
+          await recordDocumentOperation({
+            operation: 'update',
+            content: plainText,
+            date: new Date().toISOString(),
+            description: `文档更新 - 版本${updateResponse.revisionHistory?.length || 1}`
+          });
+        }
+      } catch (apiError) {
+        console.error('保存失败:', apiError);
+      }
+    }
+  } catch (error) {
+    console.error('保存文档时出错:', error);
+  } finally {
+    isSaving = false;
+  }
+}, 500);
+
+// 记录文档操作历史
+const recordDocumentOperation = async (operationData) => {
+  try {
+    const documentId = getDocumentIdFromUrl();
+    if (!documentId) return;
+
+    // 使用 documentOperationsApi 记录操作
+    const response = await documentOperationsApi.recordDocumentOperation(
+        documentId,
+        operationData
+    );
+
+    if (response.code === 200) {
+      console.log('操作历史记录成功');
+      // 刷新历史记录列表
+      fetchHistory();
+    }
+  } catch (error) {
+    console.error('记录操作历史失败:', error);
+  }
+};
+
+// 检查是否需要强制保存(基于时间)
+const checkTimeBasedSave = () => {
+  if (!lastChangeTime || !isClient || !quill) return;
+
+  const elapsedTime = Date.now() - lastChangeTime;
+  if (elapsedTime >= TIME_THRESHOLD) {
+    console.log(`编辑时间超过${TIME_THRESHOLD/1000}秒，强制保存`);
+    saveDocument(true);
+  }
+};
+
+// 设置定时保存和时间检查
+const setupAutoSave = () => {
+  if (contentOutputInterval) {
+    clearInterval(contentOutputInterval);
+  }
+
+  // 每5秒检查一次
+  contentOutputInterval = setInterval(() => {
+    checkTimeBasedSave();
+  }, 5000);
+};
+
+// 开始编辑会话计时
+const startEditTimer = () => {
+  if (editTimer) clearInterval(editTimer);
+
+  editSessionStart = Date.now();
+  editTimer = setInterval(() => {
+    const elapsed = Date.now() - editSessionStart;
+    console.log(`编辑时长: ${elapsed/1000}秒`);
+  }, 1000);
+};
+
+// 停止编辑会话计时
+const stopEditTimer = () => {
+  if (editTimer) {
+    clearInterval(editTimer);
+    editTimer = null;
+  }
+  editSessionStart = null;
+};
 
 // 渲染远程光标的函数
 const renderRemoteCursors = () => {
   if (!isClient || !quill || !websocketModule.value) return;
-  // 清除之前的光标
+
   const existingCursors = document.querySelectorAll(".remote-cursor");
-  console.log(existingCursors);
   existingCursors.forEach((cursor) => cursor.remove());
 
   const allStates = awareness.getStates();
@@ -150,7 +321,6 @@ const debouncedRenderRemoteCursors = debounce(renderRemoteCursors, 50);
 const initCollaborativeEditor = async () => {
   if (!isClient || !quillEditor.value) return;
 
-  // 确保所有依赖已加载
   if (
       !quillModule.value ||
       !yjsModule.value ||
@@ -161,11 +331,10 @@ const initCollaborativeEditor = async () => {
     return;
   }
 
-  // 创建 Quill 编辑器实例
   quill = new quillModule.value.default(quillEditor.value, {
     theme: "snow",
     modules: {
-      toolbar: '#toolbar', // 指定工具栏
+      toolbar: '#toolbar',
       history: {
         delay: 1000,
         maxStack: 500,
@@ -175,23 +344,20 @@ const initCollaborativeEditor = async () => {
     placeholder: "开始协同编辑...",
   });
 
-  // 创建 Yjs 文档
   ydoc = new yjsModule.value.Doc({
     gc: true,
     gcFilter: (item) => !item.deleted,
   });
 
-  // 创建共享文本
   ytext = ydoc.getText("text");
 
-  // 配置 WebSocket 提供者
   provider = new websocketModule.value.WebsocketProvider(
       "ws://8.134.200.53:1234",
       "my-roomname",
       ydoc,
       {
         reconnect: true,
-        reconnectTimeout: 5000,
+        reconnectTimeout: 1000,
         maxBackoff: 30000,
         params: {
           username: `用户_${Math.random().toString(36).substr(2, 9)}`,
@@ -199,18 +365,12 @@ const initCollaborativeEditor = async () => {
       }
   );
 
-  // 监听 Yjs 文本变更
   ytext.observe((event) => {
     const selection = quill.getSelection();
-    console.log(selection, "1");
-
     const yjsContent = ytext.toDelta();
     const currentContent = quill.getContents();
 
     if (JSON.stringify(currentContent.ops) !== JSON.stringify(yjsContent)) {
-      console.log("当前文本内容：" + JSON.stringify(currentContent));
-      console.log("检测到不一致，同步内容");
-
       const updatedUser = {
         ...localUser.value,
         cursorPosition: selection?.index,
@@ -226,7 +386,7 @@ const initCollaborativeEditor = async () => {
   });
 
   try {
-    const binding = new quillBindingModule.value.QuillBinding(
+    new quillBindingModule.value.QuillBinding(
         ytext,
         quill,
         provider.awareness,
@@ -234,19 +394,25 @@ const initCollaborativeEditor = async () => {
           awareness: provider.awareness,
         }
     );
-    console.log("QuillBinding 创建成功", binding);
   } catch (error) {
     console.error("QuillBinding 创建失败:", error);
   }
 
-  // 配置 Awareness
   awareness = provider.awareness;
 
-  // 光标选择变化监听
-  quill.on("selection-change", (range, oldRange, source) => {
-    console.log(range, "3");
+  quill.on("text-change", (delta, oldDelta, source) => {
+    if (source === 'user') {
+      // 用户每进行一次编辑，计数加1
+      userEditCount++;
+      console.log(`✏️ 用户编辑次数: ${userEditCount}`);
 
-    // 如果当前 range 为 null，尝试使用上一次的 range
+      lastChangeTime = Date.now();
+      startEditTimer();
+      saveDocument();
+    }
+  });
+
+  quill.on("selection-change", (range, oldRange, source) => {
     if (!range && userSelectionRange) {
       range = userSelectionRange;
     }
@@ -259,17 +425,11 @@ const initCollaborativeEditor = async () => {
       };
 
       awareness.setLocalStateField("user", updatedUser);
-
       debouncedRenderRemoteCursors();
-
-      // 处理悬浮工具栏
       handleSelectionChange(range);
 
-      // 添加选择高亮
       if (range.length > 0) {
-        // 存储当前选择区域
         userSelectionRange = range;
-        // 为选中区域添加背景色
         quill.formatText(
             range.index,
             range.length,
@@ -277,7 +437,6 @@ const initCollaborativeEditor = async () => {
             localUser.value.color
         );
       } else {
-        // 如果之前有选择区域，清除该区域的背景色
         if (userSelectionRange) {
           quill.formatText(
               userSelectionRange.index,
@@ -291,33 +450,16 @@ const initCollaborativeEditor = async () => {
     }
   });
 
-  // Awareness 变化监听
   awareness.on("change", (changes) => {
     const allStates = awareness.getStates();
-
-    // 详细打印所有用户状态和光标位置
-    const users = Array.from(allStates.entries()).map(([clientID, state]) => ({
-      clientID,
-      user: state.user,
-      cursorPosition: state.user?.cursorPosition,
-      cursorLength: state.user?.cursorLength,
-    }));
-
-    console.log("当前用户列表:", users);
-
-    users.forEach((user) => {
-      if (user.cursorPosition !== undefined) {
-        console.log(
-            `用户 ${user.user.name} 的光标位置：${user.cursorPosition}`
-        );
-      }
-    });
   });
 
-  // 同步状态监听
   provider.on("sync", (isSynced) => {
     console.log("🌐 同步状态:", isSynced ? "已同步" : "未同步");
   });
+
+  // 初始化自动保存定时器
+  setupAutoSave();
 };
 
 // 处理选区变化
@@ -329,11 +471,9 @@ const handleSelectionChange = (range) => {
     if (!toolbar) return;
 
     if (range.length > 0) {
-      // 有选中内容时显示工具栏
       toolbar.classList.add('active');
       positionToolbar(range);
     } else {
-      // 没有选中内容时隐藏工具栏
       toolbar.classList.remove('active');
     }
   });
@@ -372,74 +512,67 @@ const setContent = (content) => {
   if (!quill || !content) return;
 
   try {
-    // 停止Yjs监听，防止无限循环
     if (ytext) {
       ytext.unobserve(ytextObserver);
     }
-    let processedContent = content.toString().trim();
-    const newlineIndex = processedContent.indexOf('\n');
-    if (newlineIndex !== -1) {
-      processedContent = processedContent.substring(0, newlineIndex);
-    }
 
-    // 清除编辑器现有内容
-    quill.setContents([{ insert: '\n' }]);
+    quill.setContents([{ insert: content }]);
 
-    // 插入新内容
-    quill.insertText(0, processedContent);
-
-    // 如果Yjs存在，同步内容
     if (ytext) {
-      // 获取当前内容并转换为Delta格式
       const delta = quill.getContents();
-      // 清除Yjs现有内容
       ytext.delete(0, ytext.length);
-      // 插入新内容
       ytext.applyDelta(delta.ops);
-
-      // 重新注册Yjs监听
       ytext.observe(ytextObserver);
     }
 
-    console.log('内容已成功设置:', processedContent);
+    // 设置内容后更新最后保存的内容和重置计数
+    lastSavedContent = JSON.stringify(quill.getContents());
+    userEditCount = 0;
+    lastChangeTime = Date.now();
   } catch (error) {
     console.error('设置内容失败:', error);
-
-    // 重新注册Yjs监听，即使发生错误
     if (ytext) {
       ytext.observe(ytextObserver);
     }
   }
 };
 
-// 创建Yjs文本变更观察者的引用
+// Yjs文本变更观察者
 const ytextObserver = (event) => {
   const selection = quill.getSelection();
-  console.log(selection, "1");
-
   const yjsContent = ytext.toDelta();
   const currentContent = quill.getContents();
 
   if (JSON.stringify(currentContent.ops) !== JSON.stringify(yjsContent)) {
-    console.log("当前文本内容：" + JSON.stringify(currentContent));
-    console.log("检测到不一致，同步内容");
+    // 禁用事件监听，防止循环更新
+    quill.off('text-change');
 
-    const updatedUser = {
-      ...localUser.value,
-      cursorPosition: selection?.index,
-      cursorLength: selection?.length,
-    };
+    // 应用Yjs内容到Quill
+    quill.setContents(yjsContent);
 
-    renderRemoteCursors();
+    // 恢复事件监听
+    quill.on('text-change', (delta, oldDelta, source) => {
+      if (source === 'user') {
+        userEditCount++;
+        lastChangeTime = Date.now();
+        startEditTimer();
+        saveDocument();
+      }
+    });
 
+    // 恢复选择位置
     if (selection) {
-      quill.setSelection(selection.index, selection.length, "silent");
+      quill.setSelection(selection.index, selection.length, 'silent');
     }
+
+    // 更新最后保存的内容
+    lastSavedContent = JSON.stringify(yjsContent);
   }
+
+  renderRemoteCursors();
 };
 
 const emits = defineEmits(['editor-mounted']);
-
 const getCurrentContent = () => {
   if (quill) {
     return quill.getContents();
@@ -451,13 +584,9 @@ const getCurrentContent = () => {
 onMounted(async () => {
   if (!isClient) return;
 
-  // 先加载依赖
   await loadDependencies();
-
-  // 初始化编辑器
   await initCollaborativeEditor();
 
-  // 暴露方法给父组件
   emits('editor-mounted', {
     getCurrentContent,
     setContent
@@ -466,15 +595,27 @@ onMounted(async () => {
 
 // 组件卸载时清理
 onUnmounted(() => {
+  // 清除定时器
+  if (contentOutputInterval) {
+    clearInterval(contentOutputInterval);
+  }
+
+  if (editTimer) {
+    clearInterval(editTimer);
+  }
+
+
   if (ytext) {
     ytext.unobserve(ytextObserver);
   }
   provider?.disconnect();
   ydoc?.destroy();
+  stopEditTimer();
 });
 </script>
 
 <style scoped>
+/* 样式保持不变 */
 .quill-container {
   position: relative;
   width: 100%;

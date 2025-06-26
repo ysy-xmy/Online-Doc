@@ -31,10 +31,12 @@ let ydoc = null;
 let ytext = null;
 let provider = null;
 let awareness = null;
+const commentList = ref([]);
+const currentComment = ref(null);
 const documentStore = useDocumentStore();
 const documentInfo = useDocumentStore().documentInfo;
 const usersInfo = useDocumentStore().usersInfo;
-
+const emits = defineEmits(['openCommentPanel']);
 // 异步加载依赖
 const loadDependencies = async () => {
     if (!isClient) return;
@@ -155,8 +157,150 @@ const initCollaborativeEditor = async () => {
         return;
     }
 
+    // 注册自定义 Blot 用于处理评论标记
+    const Quill = quillModule.value.default;
+    const Embed = Quill.import('blots/embed');
+
+    class CommentBlot extends Embed {
+        static create(value) {
+            let node = super.create(value);
+            
+            // 处理不同类型的输入
+            let commentData = null;
+            if (typeof value === 'object') {
+                // 如果是完整的对象，包括 node 属性
+                if (value.node) {
+                    // 复制单一属性
+                    commentData = JSON.parse(
+                        value.node.getAttribute('data-comment')
+                    );
+                } else {
+                    // 直接使用传入的对象
+                    commentData = value;
+                }
+            }
+
+            // 确保有默认值
+            commentData = commentData || {
+                selectionId: Date.now(),
+                range: { index: 0, length: 0 },
+                color: localUser.value.color || 'blue',
+                createTime: new Date().toLocaleString(),
+                comments: []
+            };
+
+            // 检查是否已存在相同 selectionId 的评论标记
+            const existingCommentMark = quill.root.querySelector(`[data-comment][id="${commentData.selectionId}"]`);
+
+            if (existingCommentMark) {
+                // 如果存在，更新现有的评论数据
+                const existingCommentData = JSON.parse(existingCommentMark.getAttribute('data-comment'));
+                const mergedComments = [
+                    ...existingCommentData.comments, 
+                    ...commentData.comments
+                ];
+
+                commentData = {
+                    ...existingCommentData,
+                    comments: mergedComments
+                };
+
+                // 使用现有的节点，而不是重新赋值
+                node = existingCommentMark;
+            }
+
+            // 设置 data-comment 属性
+            node.setAttribute('data-comment', JSON.stringify(commentData));
+            node.setAttribute('id', commentData.selectionId.toString());
+            
+            // 创建更现代的评论标记
+            const commentMark = document.createElement('span');
+            commentMark.classList.add('inline-comment-marker');
+            commentMark.style.backgroundColor = commentData.color || localUser.value.color;
+            commentMark.style.color = 'white';
+            commentMark.style.borderRadius = '3px';
+            commentMark.style.padding = '0 4px';
+            commentMark.style.margin = '0 2px';
+            commentMark.style.fontSize = '10px';
+            commentMark.style.fontWeight = 'bold';
+            commentMark.style.cursor = 'pointer';
+            commentMark.textContent = 'Comment';
+            commentMark.contentEditable = 'false';
+            
+            // 清除之前的评论标记（如果存在）
+            const existingCommentMarkElement = node.querySelector('.inline-comment-marker');
+            if (existingCommentMarkElement) {
+                node.removeChild(existingCommentMarkElement);
+            }
+            
+            // 将评论标记添加到节点中
+            node.appendChild(commentMark);
+            
+            // 设置样式
+            node.style.position = 'relative';
+            node.style.display = 'inline-block';
+            
+            return node;
+        }
+
+        static value(node) {
+            const commentData = node.getAttribute('data-comment');
+            return commentData ? JSON.parse(commentData) : null;
+        }
+
+        // 实现 deleteAt 方法
+        deleteAt(index, length) {
+            // 阻止删除操作
+            return;
+        }
+
+        // 实现 split 方法
+        split(index, value) {
+            const leftNode = this.domNode.cloneNode(false);
+            const rightNode = this.domNode.cloneNode(false);
+
+            // 确保评论标记在分割后仍然存在
+            const commentMark = this.domNode.querySelector('.inline-comment-marker');
+            if (commentMark) {
+                rightNode.appendChild(commentMark.cloneNode(true));
+            }
+
+            return [leftNode, rightNode];
+        }
+
+        // 实现 optimize 方法
+        optimize(mutations) {
+            // 确保评论标记始终存在
+            if (!this.domNode.querySelector('.inline-comment-marker')) {
+                const commentMark = document.createElement('span');
+                commentMark.classList.add('inline-comment-marker');
+                commentMark.style.backgroundColor = localUser.value.color || 'blue';
+                commentMark.style.color = 'white';
+                commentMark.style.borderRadius = '3px';
+                commentMark.style.padding = '0 4px';
+                commentMark.style.margin = '0 2px';
+                commentMark.style.fontSize = '10px';
+                commentMark.style.fontWeight = 'bold';
+                commentMark.style.cursor = 'pointer';
+                commentMark.textContent = 'Comment';
+                commentMark.contentEditable = 'false';
+                this.domNode.appendChild(commentMark);
+            }
+        }
+        // 实现 isolate 方法
+        isolate(index, length) {
+            // 阻止隔离操作
+            return this.domNode;
+        }
+    }
+
+    CommentBlot.blotName = 'comment';
+    CommentBlot.tagName = 'span';
+
+    Quill.register(CommentBlot);
+
     // 创建 Quill 编辑器实例
-    quill = new quillModule.value.default(quillEditor.value, {
+    quill = new Quill(quillEditor.value, {
         theme: "snow",
         modules: {
           syntax: {
@@ -167,9 +311,46 @@ const initCollaborativeEditor = async () => {
                 delay: 1000,
                 maxStack: 500,
                 userOnly: true,
-            },
+            }
         },
         placeholder: "开始协同编辑...",
+    });
+
+    // 点击事件处理
+    quill.root.addEventListener('click', (event) => {
+        const commentMark = event.target.closest('[data-comment]');
+        
+        if (commentMark) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            // 从单一属性中提取评论信息
+            const commentInfo = JSON.parse(
+                commentMark.getAttribute('data-comment')
+            );
+
+            // 打开评论面板并传递评论信息
+            emits('openCommentPanel', commentInfo);
+            currentComment.value = commentInfo;
+
+            // 取消选中
+            const selection = quill.getSelection();
+            if (selection) {
+                // 安全地清除背景色
+                try {
+                    if (userSelectionRange) {
+                        quill.removeFormat(
+                            userSelectionRange.index, 
+                            userSelectionRange.length
+                        );
+                        userSelectionRange = null;
+                    }
+                    quill.setSelection(null);
+                } catch (error) {
+                    console.error("清除背景色时出错:", error);
+                }
+            }
+        }
     });
 
     // 创建 Yjs 文档
@@ -203,14 +384,6 @@ const initCollaborativeEditor = async () => {
         if (event.changes.delta && event.changes.delta.length > 0) {
 
             const selection = quill.getSelection();
-
-            // 更新用户状态
-            const updatedUser = {
-                ...localUser.value,
-                cursorPosition: selection?.index,
-                cursorLength: selection?.length,
-            };
-
             // 重新渲染远程光标
             renderRemoteCursors();
 
@@ -242,7 +415,6 @@ const initCollaborativeEditor = async () => {
 
     // 光标选择变化监听
     quill.on("selection-change", (range, oldRange, source) => {
-
         // 如果当前 range 为 null，尝试使用上一次的 range
         if (!range && userSelectionRange) {
             range = userSelectionRange;
@@ -262,27 +434,37 @@ const initCollaborativeEditor = async () => {
             // 处理悬浮工具栏
             handleSelectionChange(range);
 
-            // 添加选择高亮
+            // 移除选择高亮
             if (range.length > 0) {
                 // 存储当前选择区域
                 userSelectionRange = range;
-                // 为选中区域添加背景色
-                quill.formatText(
-                    range.index,
-                    range.length,
-                    "background",
-                    localUser.value.color
-                );
             } else {
                 // 如果之前有选择区域，清除该区域的背景色
                 if (userSelectionRange) {
-                    quill.formatText(
-                        userSelectionRange.index,
-                        userSelectionRange.length,
-                        "background",
-                        false
+                    try {
+                        // 使用 removeFormat 清除背景色
+                        quill.removeFormat(
+                            userSelectionRange.index, 
+                            userSelectionRange.length
+                        );
+                        userSelectionRange = null;
+                    } catch (error) {
+                        console.error("清除背景色时出错:", error);
+                    }
+                }
+            }
+        } else {
+            // 当没有选区时，确保清除之前的背景色
+            if (userSelectionRange) {
+                try {
+                    // 使用 removeFormat 清除背景色
+                    quill.removeFormat(
+                        userSelectionRange.index, 
+                        userSelectionRange.length
                     );
                     userSelectionRange = null;
+                } catch (error) {
+                    console.error("清除背景色时出错:", error);
                 }
             }
         }
@@ -436,6 +618,76 @@ const getCurrentUserInfo = () => {
     }
 };
 
+//处理评论
+const addComment = () => {
+    const selection = quill.getSelection();
+    
+    // 如果没有选择，提示用户
+    if (!selection) {
+        alert('请选择要添加评论的位置');
+        return;
+    }
+
+    // 获取选中的文本
+    const selectedText = selection.length > 0 
+        ? quill.getText(selection.index, selection.length) 
+        : '';
+
+    const commentData = {
+        selectionId: Date.now(),
+        range: {
+            index: selection.index,
+            length: selection.length
+        },
+        index: selection.index,
+        color: localUser.value.color,
+        createTime: new Date().toLocaleString().replace(/\//g, '/'),
+        comments: []
+    };
+
+    // 直接插入评论标记
+    quill.insertEmbed(selection.index, 'comment', commentData);
+
+    // 打开评论面板
+    emits('openCommentPanel', commentData);
+};
+
+// 插入评论的方法（支持外部调用）
+const insertCommentAtPosition = (commentData) => {
+  if (!quill || !awareness) return null;
+
+  // 获取现有的评论标记
+  const existingCommentMark = quill.root.querySelector(`[data-comment][id="${commentData.selectionId}"]`);
+  
+  if (!existingCommentMark) {
+    console.error('未找到对应的评论标记');
+    return null;
+  }
+
+  // 获取现有的评论数据
+  let existingCommentData = JSON.parse(existingCommentMark.getAttribute('data-comment'));
+
+  // 准备新的评论
+  const newComment = {
+    id: Date.now(), // 生成唯一ID
+    text: commentData.newComment.text,
+    author: '当前用户',
+    timestamp: new Date().toLocaleString().replace(/\//g, '/'),
+  };
+
+  // 更新现有评论数据
+  existingCommentData.comments.push(newComment);
+
+  // 更新 data-comment 属性
+  existingCommentMark.setAttribute('data-comment', JSON.stringify(existingCommentData));
+
+  // 打开侧边评论面板
+  emits('openCommentPanel', existingCommentData);
+  currentComment.value = existingCommentData;
+
+  return existingCommentData;
+};
+
 // 组件挂载时初始化
 onMounted(async () => {
     if (!isClient) return;
@@ -467,6 +719,7 @@ onUnmounted(() => {
 defineExpose({
     getCurrentUserInfo,
     usersInfo,
+    insertCommentAtPosition
 });
 </script>
 
@@ -530,6 +783,9 @@ defineExpose({
                     <select class="ql-color" title="文字颜色"></select>
                     <select class="ql-background" title="背景颜色"></select>
                     <button class="ql-code-block" title="代码块">代码块</button>
+                </div>
+                <div class="toolbar-group">
+                    <button class="ql-comment-icon" @click="addComment">💬</button>
                 </div>
             </div>
         </div>
@@ -655,5 +911,28 @@ defineExpose({
 .ql-snow.ql-toolbar {
     border: none !important;
     padding: 0 !important;
+}
+
+.remote-cursor {
+    position: absolute;
+    pointer-events: none;
+}
+
+.remote-cursor-tooltip {
+    position: absolute;
+    padding: 2px 5px;
+    border-radius: 3px;
+    color: white;
+    font-size: 10px;
+}
+
+.inline-comment-marker {
+    transition: all 0.2s ease;
+}
+
+.inline-comment-marker:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 </style>

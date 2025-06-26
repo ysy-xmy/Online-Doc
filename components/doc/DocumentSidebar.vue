@@ -39,13 +39,16 @@
         </div>
 
         <!-- 选项卡内容 -->
-        <div class="p-4 h-full">
+        <div class="p-2 h-full">
           <Transition name="fade" mode="out-in">
             <component 
-              :is="activeTabComponent" 
+              :is="activeTabComponent"
+              :commentData ="commentData"
+              @addComment="handleAddComment"
               :key="activeTab"
             />
           </Transition>
+
         </div>
       </div>
     </div>
@@ -58,6 +61,7 @@
 </template>
 
 <script setup>
+import { provide, ref, computed, watch } from 'vue'
 import CommentTab from './tab/CommentTab.vue'
 import RevisionTab from './tab/RevisionTab.vue'
 import HistoryTab from './tab/HistoryTab.vue'
@@ -76,15 +80,23 @@ const props = defineProps({
   show: {
     type: Boolean,
     default: false
+  },
+  commentData: {
+    type: [Array, Object],
+    default:[]
   }
 })
 
-const emit = defineEmits(['update:show'])
-
+const emit = defineEmits(['update:show','addComment'])
 const show = computed({
   get: () => props.show,
   set: (value) => emit('update:show', value)
 })
+
+  const handleAddComment = (data) => {
+  emit('addComment', data)
+}
+
 
 const activeTab = ref('comments')
 
@@ -106,6 +118,8 @@ const activeTabComponent = computed(() => {
 const toggleSidebar = () => {
   show.value = !show.value
 }
+
+
 </script>
 
 <style scoped>

@@ -55,9 +55,8 @@
   </aside>
   <FloatingButton @click="startSummary"/>
   <SummaryModal
-      :isVisible="isAISummaryVisible"
-      @close="handleClosePanel"
-    />
+    v-model:isVisible="isAISummaryVisible"
+  />
 </template>
 
 <script setup>
@@ -70,10 +69,7 @@ import SummaryModal from '../AI/SummaryModal.vue';
 
 const isAISummaryVisible = ref(false);
 const startSummary = () => {
-  isAISummaryVisible.value = !isAISummaryVisible.value
-}
-const handleClosePanel = () => {
-  isAISummaryVisible.value = false;
+  isAISummaryVisible.value = true
 }
 
 const props = defineProps({

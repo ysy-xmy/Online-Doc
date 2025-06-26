@@ -274,12 +274,28 @@ const initCollaborativeEditor = async () => {
 
         // 实现 split 方法
         split(index, value) {
-            const leftNode = this.domNode.cloneNode(false);
-            const rightNode = this.domNode.cloneNode(false);
+            // 创建左右两个节点的副本
+            const leftNode = this.domNode.cloneNode(true);
+            const rightNode = this.domNode.cloneNode(true);
 
-            // 确保评论标记在分割后仍然存在
+            // 尝试安全地处理评论标记
             const commentMark = this.domNode.querySelector('.inline-comment-marker');
             if (commentMark) {
+                // 确保两个节点都有评论标记
+                const leftCommentMark = leftNode.querySelector('.inline-comment-marker');
+                const rightCommentMark = rightNode.querySelector('.inline-comment-marker');
+                
+                if (leftCommentMark) leftCommentMark.remove();
+                if (rightCommentMark) rightCommentMark.remove();
+
+                // 复制评论数据
+                const commentData = JSON.parse(this.domNode.getAttribute('data-comment') || '{}');
+                
+                leftNode.setAttribute('data-comment', JSON.stringify(commentData));
+                rightNode.setAttribute('data-comment', JSON.stringify(commentData));
+
+                // 重新添加评论标记
+                leftNode.appendChild(commentMark.cloneNode(true));
                 rightNode.appendChild(commentMark.cloneNode(true));
             }
 
@@ -307,7 +323,7 @@ const initCollaborativeEditor = async () => {
         }
         // 实现 isolate 方法
         isolate(index, length) {
-            // 阻止隔离操作
+            // 返回当前节点，不做额外处理
             return this.domNode;
         }
     }

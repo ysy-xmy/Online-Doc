@@ -29,11 +29,26 @@
         name="mdi:comment-outline" 
       />
     </button>
+
+    <!-- AI生成摘要按钮 -->
+    <FloatingButton @click="startSummary" />
+    <SummaryModal :isVisible="isAISummaryVisible" :documentId="documentId" @close="handleClosePanel" />
   </div>
 </template>
 
 <script setup>
 import { useDocumentStore } from "@/stores/document";
+import FloatingButton from "@/components/AI/FloatingButton.vue";
+import SummaryModal from "@/components/AI/SummaryModal.vue";
+
+const isAISummaryVisible = ref(false);
+const startSummary = () => {
+  isAISummaryVisible.value = !isAISummaryVisible.value;
+};
+const handleClosePanel = () => {
+  isAISummaryVisible.value = false;
+};
+
 const documentStore = useDocumentStore();
 const documentInfo = documentStore.documentInfo;
 

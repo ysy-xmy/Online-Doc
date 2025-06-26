@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import { useDocumentStore } from "@/stores/document";
+import _ from "lodash";
+
 
 import 'highlight.js/styles/atom-one-dark.min.css';
 import hljs from 'highlight.js/lib/common';
@@ -99,7 +101,8 @@ const renderRemoteCursors = () => {
     users.forEach(([clientID, state]) => {
         try {
             const bounds = quill.getBounds(state.user.cursorPosition);
-
+            console.log("bounds", bounds);
+            // 创建光标元素
             const cursorElement = document.createElement("div");
             cursorElement.classList.add("remote-cursor");
             cursorElement.style.position = "absolute";
@@ -109,6 +112,7 @@ const renderRemoteCursors = () => {
             cursorElement.style.width = "2px";
             cursorElement.style.height = `${bounds.height}px`;
 
+            // 创建悬浮工具栏
             const containerTooltip = document.createElement("div");
             const tooltipElement = document.createElement("div");
             tooltipElement.classList.add("remote-cursor-tooltip");
@@ -140,6 +144,17 @@ const renderRemoteCursors = () => {
     });
 };
 
+// 监测编辑器滚动
+const handleEditorScroll = () => {
+    console.log("编辑器滚动");
+    // 重新渲染远程光标以确保位置正确
+    debouncedRenderCursors();
+};
+
+// 防抖版本的渲染远程光标（编辑器滚动）
+const debouncedRenderCursors = debounce(renderRemoteCursors, 1);
+
+// 防抖版本的渲染远程光标
 const debouncedRenderRemoteCursors = debounce(renderRemoteCursors, 50);
 
 // 初始化编辑器和协同功能
@@ -382,9 +397,19 @@ const initCollaborativeEditor = async () => {
     ytext.observe((event) => {
         // 只在有实际变更时才处理
         if (event.changes.delta && event.changes.delta.length > 0) {
+            // console.log("检测到实际内容变更");
 
             const selection = quill.getSelection();
-            // 重新渲染远程光标
+            console.log("当前选择:", selection);
+
+            // 更新用户状态
+            const updatedUser = {
+                ...localUser.value,
+                cursorPosition: selection?.index,
+                cursorLength: selection?.length,
+            };
+
+            // 渲染远程光标
             renderRemoteCursors();
 
             // 保持当前选择
@@ -427,8 +452,10 @@ const initCollaborativeEditor = async () => {
                 cursorLength: range.length,
             };
 
+            // 设置本地用户状态
             awareness.setLocalStateField("user", updatedUser);
 
+            //这里是本地的光标渲染
             debouncedRenderRemoteCursors();
 
             // 处理悬浮工具栏
@@ -484,8 +511,19 @@ const initCollaborativeEditor = async () => {
             })
         );
 
-        //allStates是所有用户的状态
-        //users是当前用户列表
+        // 直接更新用户列表到 store
+        const formattedUsers = users
+            .filter((user) => user.user && user.user.name) // 过滤掉无效用户
+            .map((user) => ({
+                userName: user.user.name,
+                clientID: user.clientID,
+                color: user.user.color,
+                isLocal: user.clientID === awareness.clientID,
+            }));
+
+        documentStore.$patch({
+            allUsersList: formattedUsers,
+        });
 
         // 获取当前用户信息
         getCurrentUserInfo();
@@ -545,6 +583,16 @@ const initCollaborativeEditor = async () => {
     // 监听连接断开
     provider.on("message", (event) => {
         console.log("🔗 WebSocket 消息:", event);
+    });
+
+    // 添加编辑器滚动监听器
+    nextTick(() => {
+        const editorElement = document.querySelector(".ql-editor");
+
+        if (editorElement) {
+            editorElement.addEventListener("scroll", handleEditorScroll);
+            console.log("已添加 .ql-editor 滚动监听器");
+        }
     });
 
     // 直接监听 WebSocket 消息（绕过 Yjs 拦截）
@@ -702,6 +750,12 @@ onMounted(async () => {
 // 组件卸载时清理
 onUnmounted(() => {
     // console.log("组件卸载，清理资源...");
+
+    // 清理滚动监听器
+    document
+        .querySelector(".ql-editor")
+        ?.removeEventListener("scroll", handleEditorScroll);
+
     // 清空用户信息
     documentStore.$patch({
         usersInfo: {
@@ -710,6 +764,7 @@ onUnmounted(() => {
             timestamp: 0,
             clientID: "",
         },
+        allUsersList: [],
     });
     provider?.disconnect();
     ydoc?.destroy();
@@ -725,20 +780,6 @@ defineExpose({
 
 <template>
     <div class="quill-container">
-        <!-- 当前用户信息显示 -->
-        <div class="current-user-info" v-if="usersInfo.name">
-            <div
-                class="user-avatar"
-                :style="{ backgroundColor: usersInfo.color }"
-            >
-                {{ usersInfo.name.charAt(0) }}
-            </div>
-            <div class="user-details">
-                <div class="user-name">{{ usersInfo.name }}</div>
-                <div class="user-id">ID: {{ usersInfo.clientID }}</div>
-            </div>
-        </div>
-
         <div class="floating-toolbar" ref="floatingToolbar">
             <div id="toolbar" class="ql-toolbar">
                 <div class="toolbar-group">
@@ -804,50 +845,6 @@ defineExpose({
     overflow: hidden;
 }
 
-.current-user-info {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: white;
-    padding: 8px 12px;
-    border-radius: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    font-size: 12px;
-}
-
-.user-avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 12px;
-}
-
-.user-details {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.user-name {
-    font-weight: 600;
-    color: #333;
-}
-
-.user-id {
-    font-size: 10px;
-    color: #666;
-    font-family: monospace;
-}
-
 .floating-toolbar {
     position: absolute;
     background: white;
@@ -896,6 +893,7 @@ defineExpose({
 }
 
 .ql-container {
+    position: relative;
     border: none !important;
     font-size: 16px;
     border-radius: 8px;

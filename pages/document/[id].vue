@@ -30,6 +30,10 @@
 </template>
 
 <script setup>
+import { useDocumentStore } from "@/stores/document";
+const documentStore = useDocumentStore();
+const documentInfo = documentStore.documentInfo;
+
 // 使用 definePageMeta 指定全局布局
 definePageMeta({
   layout: "fullscreen",
@@ -96,8 +100,9 @@ onMounted(() => {
 
 // 保存文档的方法
 const saveDocument = (name) => {
-  // 在实际应用中，这里应该调用后端保存接口
-  console.log("保存文档:", name, documentContent.value);
+    documentInfo.value = name;
+    // 在实际应用中，这里应该调用后端保存接口
+    console.log("保存文档:", name, documentContent.value);
 
   // 更新保存状态
   if (menuRef.value) {

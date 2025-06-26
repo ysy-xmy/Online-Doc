@@ -23,13 +23,13 @@
             <div class="users-info">
                 <span class="users-count">
                     <i class="users-icon">👥</i>
-                    {{ onlineUserCount }} 人在线
+                    {{ onlineUserCount }} 人在线编辑
                 </span>
             </div>
             <div class="users-list">
                 <div
                     v-for="user in onlineUsers"
-                    :key="user.id"
+                    :key="user.clientID"
                     class="user-item"
                     :class="{ 'local-user': user.isLocal }"
                 >
@@ -37,9 +37,9 @@
                         class="user-avatar"
                         :style="{ backgroundColor: user.color }"
                     >
-                        {{ user.name.charAt(0) }}
+                        {{ user.userName.charAt(0) }}
                     </div>
-                    <span class="user-name">{{ user.name }}</span>
+                    <span class="user-name">{{ user.userName }}</span>
                     <span v-if="user.isLocal" class="local-badge">我</span>
                 </div>
             </div>
@@ -57,10 +57,6 @@ const props = defineProps({
         type: String,
         default: "未命名文档",
     },
-    onlineUsers: {
-        type: Array,
-        default: () => [],
-    },
 });
 
 // 定义emits
@@ -69,6 +65,9 @@ const emit = defineEmits(["update:documentName", "save"]);
 // 使用 store 中的文档信息
 const documentStore = useDocumentStore();
 const documentInfo = documentStore.documentInfo;
+
+// 从 store 获取用户列表
+const onlineUsers = computed(() => documentStore.allUsersList);
 
 // 监听props变化
 watch(
@@ -99,9 +98,8 @@ const formattedLastSaved = computed(() => {
 
 // 计算属性：在线用户数量
 const onlineUserCount = computed(() => {
-    return props.onlineUsers.length;
+    return onlineUsers.value.length;
 });
-
 
 // 防抖版本的恢复保存状态
 const debouncedRestoreSaveStatus = debounce(function () {
@@ -122,7 +120,6 @@ const autoSave = () => {
     documentInfo.saveStatus = "保存中";
     debouncedRestoreSaveStatus();
 };
-
 
 // 监听文档名称变化
 watch(

@@ -469,8 +469,8 @@ const initCollaborativeEditor = async () => {
                 // 如果之前有选择区域，清除该区域的背景色
                 if (userSelectionRange) {
                     try {
-                        // 使用 removeFormat 清除背景色
-                        quill.removeFormat(
+                       // 使用 formatText 清除背景色
+                        quill.formatText(
                             userSelectionRange.index, 
                             userSelectionRange.length
                         );
@@ -484,8 +484,8 @@ const initCollaborativeEditor = async () => {
             // 当没有选区时，确保清除之前的背景色
             if (userSelectionRange) {
                 try {
-                    // 使用 removeFormat 清除背景色
-                    quill.removeFormat(
+                    // 使用 formatText 清除背景色
+                    quill.formatText(
                         userSelectionRange.index, 
                         userSelectionRange.length
                     );

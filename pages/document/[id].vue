@@ -1,5 +1,5 @@
 <template>
-  <div class="document-editor">
+  <div class="h-full w-full flex flex-col overflow-y-auto bg-amber-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     <!-- 文档信息菜单 -->
     <Doc-Menu
       v-model:documentName="documentName"
@@ -23,8 +23,11 @@
     <!-- 评论按钮 -->
     <button
       @click="openSidebar"
-      class="cursor-pointer absolute bottom-10 right-40 bg-gray-100 h-10 w-10 rounded-full">
-      <Icon :style="{ color: '#000' }" name="mdi:comment-outline" />
+      class="cursor-pointer absolute bottom-10 right-40 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 h-10 w-10 rounded-full flex items-center justify-center transition-colors duration-200">
+      <Icon 
+        class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" 
+        name="mdi:comment-outline" 
+      />
     </button>
   </div>
 </template>
@@ -113,21 +116,14 @@ const saveDocument = (name) => {
 </script>
 
 <style scoped>
-.document-editor {
-  height: 100%;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-
 .document-textarea {
   flex: 1;
-  padding: 20px;
+  padding: 1.25rem;
   border: none;
   resize: none;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.6;
   outline: none;
+
 }
 </style>

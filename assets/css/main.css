@@ -2,3 +2,9 @@
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark, cupcake;
 }
+/* 重置 select.ql-ui 的样式 */
+select.ql-ui {
+  color: initial !important;
+  background-color: white !important;
+  opacity: 1 !important;
+}

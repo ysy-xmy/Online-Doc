@@ -50,12 +50,27 @@
       </div>
     </div>
   </aside>
+  <FloatingButton @click="startSummary"/>
+  <SummaryModal
+      :isVisible="isAISummaryVisible"
+      @close="handleClosePanel"
+    />
 </template>
 
 <script setup>
 import CommentTab from './tab/CommentTab.vue'
 import RevisionTab from './tab/RevisionTab.vue'
 import HistoryTab from './tab/HistoryTab.vue'
+import FloatingButton from '../AI/FloatingButton.vue'
+import SummaryModal from '../AI/SummaryModal.vue';
+
+const isAISummaryVisible = ref(false);
+const startSummary = () => {
+  isAISummaryVisible.value = !isAISummaryVisible.value
+}
+const handleClosePanel = () => {
+  isAISummaryVisible.value = false;
+}
 
 const props = defineProps({
   show: {

@@ -1,6 +1,11 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import { useDocumentStore } from "@/stores/document";
+
+import 'highlight.js/styles/atom-one-dark.min.css';
+import hljs from 'highlight.js/lib/common';
+
+
 // 响应式变量
 const quillEditor = ref(null);
 const floatingToolbar = ref(null);
@@ -11,7 +16,7 @@ const yjsModule = ref(null);
 const quillBindingModule = ref(null);
 const websocketModule = ref(null);
 const localUser = ref({
-    name: `用户_${Math.random().toString(36).substr(2, 9)}`,
+    name: `用户_${Math.random().toString(36).substr(2, 6)}`,
     color: `hsl(${Math.random() * 360}, 70%, 50%)`,
     timestamp: Date.now(),
     cursorPosition: null,
@@ -154,6 +159,9 @@ const initCollaborativeEditor = async () => {
     quill = new quillModule.value.default(quillEditor.value, {
         theme: "snow",
         modules: {
+          syntax: {
+            hljs: hljs,  // 显式传递 hljs 实例
+          },
             toolbar: "#toolbar", // 指定工具栏
             history: {
                 delay: 1000,
@@ -489,6 +497,16 @@ defineExpose({
                     </select>
                 </div>
 
+              <div class="toolbar-divider"></div>
+
+              <div class="toolbar-group">
+                <select class="ql-font" title="字体">
+                  <option value="serif">衬线字体</option>
+                  <option value="monospace">等宽字体</option>
+                  <option selected>默认字体</option>
+                </select>
+              </div>
+
                 <div class="toolbar-divider"></div>
 
                 <div class="toolbar-group">
@@ -498,11 +516,20 @@ defineExpose({
                     <button class="ql-strike" title="删除线"></button>
                 </div>
 
+              <div class="toolbar-divider"></div>
+
+              <div class="toolbar-group">
+                <button class="ql-align" value="center" title="居中对齐"></button>
+                <button class="ql-align" value="right" title="右对齐"></button>
+                <button class="ql-align" value="justify" title="两端对齐"></button>
+              </div>
+
                 <div class="toolbar-divider"></div>
 
                 <div class="toolbar-group">
                     <select class="ql-color" title="文字颜色"></select>
                     <select class="ql-background" title="背景颜色"></select>
+                    <button class="ql-code-block" title="代码块">代码块</button>
                 </div>
             </div>
         </div>
@@ -600,23 +627,6 @@ defineExpose({
     background-color: #e0e0e0;
 }
 
-.ql-formats button,
-.ql-formats select {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-    border: none !important;
-}
-
-.ql-formats button:hover,
-.ql-formats select:hover {
-    background-color: #f0f0f0;
-}
-
 .editor {
     flex: 1;
     min-height: 300px;
@@ -645,18 +655,5 @@ defineExpose({
 .ql-snow.ql-toolbar {
     border: none !important;
     padding: 0 !important;
-}
-
-.remote-cursor {
-    position: absolute;
-    pointer-events: none;
-}
-
-.remote-cursor-tooltip {
-    position: absolute;
-    padding: 2px 5px;
-    border-radius: 3px;
-    color: white;
-    font-size: 10px;
 }
 </style>

@@ -3,13 +3,15 @@
     class="floating-summary-btn"
     :class="{ 
       'btn-primary': !isLoading,
-      'btn-disabled': isLoading 
+      'btn-disabled': isLoading ,
+      'cursor-pointer': !isLoading,
+      'cursor-not-allowed': isLoading
     }"
     @click="$emit('click')"
     :disabled="isLoading"
   >
     <span v-if="isLoading" class="loading loading-spinner"></span>
-    <span v-else>AI摘要</span>
+    <span v-else >AI摘要</span>
   </button>
 </template>
 
@@ -23,11 +25,14 @@ defineEmits(['click'])
 
 <style scoped>
 .floating-summary-btn {
-  position: fixed;
-  right: 2rem;
-  bottom: 2rem;
-  z-index: 100;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  position: absolute;
+  right: 3.5rem;
+  bottom: 2.5rem;
+  height: 2.5rem;
+  width: 4rem;
+  z-index: 10;
+  border-radius: 50%;
+  background-color: #f3f4f6;
   cursor: pointer;
 }
 </style>

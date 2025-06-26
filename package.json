@@ -12,10 +12,13 @@
   },
   "dependencies": {
     "@duannx/vue-client-only": "^1.0.3",
+    "@highlightjs/cdn-assets": "^11.11.1",
+    "@highlightjs/vue-plugin": "^2.1.0",
     "@pinia/nuxt": "^0.11.1",
     "@tailwindcss/vite": "^4.1.10",
     "axios": "^1.10.0",
     "daisyui": "^5.0.43",
+    "highlight.js": "^11.11.1",
     "lodash": "^4.17.21",
     "nuxt": "^3.17.5",
     "nuxt-icon": "1.0.0-beta.7",

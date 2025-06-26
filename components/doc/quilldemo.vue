@@ -12,6 +12,16 @@
 
         <div class="toolbar-divider"></div>
 
+              <div class="toolbar-group">
+                <select class="ql-font" title="字体">
+                  <option value="serif">衬线字体</option>
+                  <option value="monospace">等宽字体</option>
+                  <option selected>默认字体</option>
+                </select>
+              </div>
+
+        <div class="toolbar-divider"></div>
+
         <div class="toolbar-group">
           <button class="ql-bold" title="加粗"></button>
           <button class="ql-italic" title="斜体"></button>
@@ -21,9 +31,18 @@
 
         <div class="toolbar-divider"></div>
 
+              <div class="toolbar-group">
+                <button class="ql-align" value="center" title="居中对齐"></button>
+                <button class="ql-align" value="right" title="右对齐"></button>
+                <button class="ql-align" value="justify" title="两端对齐"></button>
+              </div>
+
+        <div class="toolbar-divider"></div>
+
         <div class="toolbar-group">
           <select class="ql-color" title="文字颜色"></select>
           <select class="ql-background" title="背景颜色"></select>
+          <button class="ql-code-block" title="代码块">代码块</button>
         </div>
       </div>
     </div>

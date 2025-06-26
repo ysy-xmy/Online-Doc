@@ -228,6 +228,9 @@ const initCollaborativeEditor = async () => {
             node.setAttribute('data-comment', JSON.stringify(commentData));
             node.setAttribute('id', commentData.selectionId.toString());
             
+            // 添加 data-index 属性
+            node.setAttribute('data-index', commentData.range.index.toString());
+            
             // 创建更现代的评论标记
             const commentMark = document.createElement('span');
             commentMark.classList.add('inline-comment-marker');
@@ -459,7 +462,7 @@ const initCollaborativeEditor = async () => {
             debouncedRenderRemoteCursors();
 
             // 处理悬浮工具栏
-            handleSelectionChange(range);
+            handleSelectionChange(range, oldRange, source);
 
             // 移除选择高亮
             if (range.length > 0) {
@@ -599,22 +602,21 @@ const initCollaborativeEditor = async () => {
 };
 
 // 处理选区变化
-const handleSelectionChange = (range) => {
-    if (!range) return;
+const handleSelectionChange = (range, oldRange, source) => {
+    const toolbar = floatingToolbar.value;
+    if (!toolbar) return;
 
-    nextTick(() => {
-        const toolbar = floatingToolbar.value;
-        if (!toolbar) return;
+    // 如果没有选区，或选区长度为0，隐藏工具栏
+    if (!range || range.length === 0) {
+        toolbar.classList.remove("active");
+        return;
+    }
 
-        if (range.length > 0) {
-            // 有选中内容时显示工具栏
-            toolbar.classList.add("active");
-            positionToolbar(range);
-        } else {
-            // 没有选中内容时隐藏工具栏
-            toolbar.classList.remove("active");
-        }
-    });
+    // 有选中内容时显示工具栏
+    if (range.length > 0) {
+        toolbar.classList.add("active");
+        positionToolbar(range);
+    }
 };
 
 // 定位工具栏
@@ -676,6 +678,27 @@ const addComment = () => {
         return;
     }
 
+    // 检查当前位置是否已存在评论
+    const existingCommentMark = quill.root.querySelector(`[data-comment][id][data-index="${selection.index}"]`);
+    
+    if (existingCommentMark) {
+        // 如果已存在评论，解析并打开已有的评论
+        const commentData = JSON.parse(existingCommentMark.getAttribute('data-comment'));
+        
+        // 取消选取
+        quill.setSelection(null);
+
+        // 明确隐藏工具栏
+        const toolbar = floatingToolbar.value;
+        if (toolbar) {
+            toolbar.classList.remove("active");
+        }
+
+        // 打开已存在的评论面板
+        emits('openCommentPanel', commentData);
+        return;
+    }
+
     // 获取选中的文本
     const selectedText = selection.length > 0 
         ? quill.getText(selection.index, selection.length) 
@@ -695,6 +718,15 @@ const addComment = () => {
 
     // 直接插入评论标记
     quill.insertEmbed(selection.index, 'comment', commentData);
+
+    // 取消选取
+    quill.setSelection(null);
+
+    // 明确隐藏工具栏
+    const toolbar = floatingToolbar.value;
+    if (toolbar) {
+        toolbar.classList.remove("active");
+    }
 
     // 打开评论面板
     emits('openCommentPanel', commentData);

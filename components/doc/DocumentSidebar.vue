@@ -53,10 +53,6 @@
       </div>
     </div>
   </aside>
-  <FloatingButton @click="startSummary"/>
-  <SummaryModal
-    v-model:isVisible="isAISummaryVisible"
-  />
 </template>
 
 <script setup>
@@ -64,13 +60,7 @@ import { provide, ref, computed, watch } from 'vue'
 import CommentTab from './tab/CommentTab.vue'
 import RevisionTab from './tab/RevisionTab.vue'
 import HistoryTab from './tab/HistoryTab.vue'
-import FloatingButton from '../AI/FloatingButton.vue'
-import SummaryModal from '../AI/SummaryModal.vue';
 
-const isAISummaryVisible = ref(false);
-const startSummary = () => {
-  isAISummaryVisible.value = true
-}
 
 const props = defineProps({
   show: {

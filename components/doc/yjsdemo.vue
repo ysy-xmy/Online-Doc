@@ -27,7 +27,6 @@ const localUser = ref({
 
 // 添加 userSelectionRange 变量
 let userSelectionRange = null;
-
 let quill = null;
 let ydoc = null;
 let ytext = null;

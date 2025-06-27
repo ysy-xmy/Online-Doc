@@ -26,7 +26,7 @@
         }"
       >
         <!-- 选项卡切换 -->
-        <div class="tabs tabs-boxed mb-4 mx-2 mt-4">
+        <div class="tabs tabs-boxed mb-4 mx-2 mt-4 text-base-content">
           <a 
             v-for="tab in tabs" 
             :key="tab.id"

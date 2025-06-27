@@ -18,14 +18,15 @@
     </aside>
 
     <!-- 主内容区 -->
-    <div class="flex-1 flex flex-col">
+    <div style="width: 0" class="flex-1 flex flex-col">
       <!-- 顶部操作栏 -->
       <header
         class="document-header bg-base-100 border-b border-base-content/10 px-4 py-2 flex justify-between items-center"
       >
         <div class="flex items-center gap-4">
           <button class="btn btn-ghost btn-circle" @click="goBack">
-            <Icon name="mdi:arrow-left" class="h-6 w-6" />
+            <img src="https://img.icons8.com/?size=100&id=19175&format=png&color=000000" class="h-6 w-6" />
+
           </button>
           <div class="logo font-bold text-lg">文档编辑器</div>
         </div>

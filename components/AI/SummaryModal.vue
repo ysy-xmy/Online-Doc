@@ -1,8 +1,7 @@
 <template>
   <div class="summary-panel" :class="{ 'visible': isVisible }">
-    <div  class="panel-toggle" @click="closePanel">
+    <div v-if="isVisible" class="panel-toggle" @click="closePanel">
       <Icon
-       
         name='mdi:arrow-right' 
         class="toggle-icon" 
       />

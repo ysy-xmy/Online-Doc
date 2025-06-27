@@ -100,7 +100,10 @@ const navigateToHome = () => {
 // 导航到知识库页面
 const navigateToKnowledgeBase = () => {
   updatePageTitle('知识库')
-  router.push('/knowledgeHome')
+  router.push('/knowledgeHome').then(() => {
+    // 确保标题更新
+    updatePageTitle('知识库')
+  })
 }
 
 // 导航到知识库子页面
@@ -117,6 +120,9 @@ watch(() => route.path, (newPath) => {
     case '/':
       updatePageTitle('主页')
       break
+    case '/knowledgeHome': // 添加对 /knowledgeHome 的处理
+      updatePageTitle('知识库')
+      break
     case '/knowledgeBase':
       updatePageTitle('知识库')
       break
@@ -131,7 +137,6 @@ watch(() => route.path, (newPath) => {
       }
   }
   // 重新加载数据或更新状态
-  loadData()
 }, { immediate: true })
 </script>
 

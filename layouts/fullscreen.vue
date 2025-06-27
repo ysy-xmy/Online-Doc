@@ -2,7 +2,7 @@
   <div class="document-layout bg-base-100 w-screen text-base-content flex">
     <!-- 左侧目录栏 -->
     <aside
-      class="document-sidebar-left bg-base-200 w-64 p-4 border-r border-base-content/10"
+      class="document-sidebar-left bg-base-200 w-64 min-w-48 p-4 border-r border-base-content/10"
     >
       <h2 class="text-lg font-bold mb-4 border-b border-base-content/10 pb-2">
         知识库名称
@@ -18,7 +18,7 @@
     </aside>
 
     <!-- 主内容区 -->
-    <div style="width: 0" class="flex-1 flex flex-col">
+    <div style="width: 0" class="flex-1 flex flex-col min-w-2xl">
       <!-- 顶部操作栏 -->
       <header
         class="document-header bg-base-100 border-b border-base-content/10 px-4 py-2 flex justify-between items-center"

@@ -4,7 +4,7 @@
         <Sidebar />
 
         <!-- 主内容区 -->
-        <div class="flex-1 flex flex-col shadow-lg">
+        <div class="flex-1 flex flex-col shadow-lg w-0">
             <!-- 顶部导航栏 -->
             <div
                 class="navbar bg-base-100 border-b border-base-content/10 px-4 py-2 shadow-sm"
@@ -66,20 +66,6 @@
 <script setup>
 import Sidebar from "~/components/layouts/Sidebar.vue";
 import ThemeChange from "~/components/layouts/ThemeChange.vue";
-
-console.log("test1");
-
-//获取用户信息（测试与后端通信）
-const { $axios } = useNuxtApp();
-$axios("/api/auth/me", {
-    method: "GET",
-})
-    .then((res) => {
-        console.log("test2", res);
-    })
-    .catch((err) => {
-        console.log(err);
-    });
 
 </script>
 

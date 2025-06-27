@@ -387,24 +387,24 @@ const initCollaborativeEditor = async () => {
         }
     });
 
-    // 创建 Yjs 文档
-    ydoc = new yjsModule.value.Doc({
-        gc: true,
-        gcFilter: (item) => !item.deleted,
-    });
+        // 创建 Yjs 文档
+        ydoc = new yjsModule.value.Doc({
+            gc: true,
+            gcFilter: (item) => !item.deleted,
+        });
 
-    // 创建共享文本
-    ytext = ydoc.getText("text");
+        // 创建共享文本
+        ytext = ydoc.getText("text");
 
-    // 配置 WebSocket 提供者（发起请求）
-    provider = new websocketModule.value.WebsocketProvider(
-        "ws://localhost:1234",
-        // "ws://8.134.200.53:1234",
-        "my-roomname",
-        ydoc,
-        {
-            reconnect: true,
-            reconnectTimeout: 5000,
+        // 配置 WebSocket 提供者（发起请求）
+        provider = new websocketModule.value.WebsocketProvider(
+            "ws://8.134.200.53:1234",
+            // "ws://8.134.200.53:1234",
+            "my-roomname",
+            ydoc,
+            {
+                reconnect: true,
+                reconnectTimeout: 5000,
             maxBackoff: 30000,
             params: {
                 username: `用户_${Math.random().toString(36).substr(2, 9)}`,

@@ -1,5 +1,5 @@
 <template>
-  <div class="document-layout bg-base-100 text-base-content flex">
+  <div class="document-layout bg-base-100 w-screen text-base-content flex">
     <!-- 左侧目录栏 -->
     <aside
       class="document-sidebar-left bg-base-200 w-64 p-4 border-r border-base-content/10"

@@ -106,7 +106,9 @@ const navigateToKnowledgeBase = () => {
 // 导航到知识库子页面
 const navigateToKnowledgeBasePage = (path, name) => {
   updatePageTitle(name)
-  router.push(path)
+  router.push(path).then(() => {
+    window.location.reload() // 强制刷新页面
+  })
 }
 
 // 监听路由变化，自动更新页面标题
@@ -128,6 +130,8 @@ watch(() => route.path, (newPath) => {
         updatePageTitle('主页')
       }
   }
+  // 重新加载数据或更新状态
+  loadData()
 }, { immediate: true })
 </script>
 

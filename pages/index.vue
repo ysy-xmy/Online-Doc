@@ -132,7 +132,10 @@
       </div>
 
       <!-- 文档列表 -->
-      <div v-else-if="dashboardStore.recentDocuments.length > 0" class="overflow-x-auto">
+      <div 
+        v-else-if="dashboardStore.recentDocuments && dashboardStore.recentDocuments.length > 0" 
+        class="overflow-x-auto"
+      >
         <table class="table table-zebra">
           <thead>
             <tr>
@@ -155,7 +158,7 @@
               <td class="group-hover:text-primary transition-colors">
                 <div class="flex items-center space-x-2">
                   <span class="text-base-content/70">{{ getDocumentIcon(doc.type) }}</span>
-                  <span>{{ doc.title }}</span>
+                  <span>{{ doc.title || '未命名文档' }}</span>
                 </div>
               </td>
               <td>
@@ -176,20 +179,20 @@
                 <div class="flex items-center space-x-2">
                   <div class="avatar avatar-xs">
                     <div class="w-6 h-6 rounded-full bg-primary text-primary-content flex items-center justify-center text-xs">
-                      {{ doc.creator.nickname?.[0] || doc.creator.username[0] }}
+                      {{ getInitial(doc.creator?.nickname || doc.creator?.username || '未知') }}
                     </div>
                   </div>
-                  <span>{{ doc.creator.nickname || doc.creator.username }}</span>
+                  <span>{{ doc.creator?.nickname || doc.creator?.username || '未知' }}</span>
                 </div>
               </td>
               <td class="group-hover:text-base-content/80 transition-colors">
                 <div v-if="doc.lastModifier" class="flex items-center space-x-2">
                   <div class="avatar avatar-xs">
                     <div class="w-6 h-6 rounded-full bg-secondary text-secondary-content flex items-center justify-center text-xs">
-                      {{ doc.lastModifier.nickname?.[0] || doc.lastModifier.username[0] }}
+                      {{ getInitial(doc.lastModifier.nickname || doc.lastModifier.username || '未知') }}
                     </div>
                   </div>
-                  <span>{{ doc.lastModifier.nickname || doc.lastModifier.username }}</span>
+                  <span>{{ doc.lastModifier.nickname || doc.lastModifier.username || '未知' }}</span>
                 </div>
                 <span v-else class="text-base-content/50">-</span>
               </td>
@@ -237,7 +240,12 @@ const showCreateDocModal = ref(false)
 
 // 页面初始化
 onMounted(async () => {
-  await dashboardStore.fetchUserDashboard()
+  try {
+    await dashboardStore.fetchUserDashboard()
+  } catch (error) {
+    console.error('初始化仪表板失败:', error)
+    dashboardStore.setError('无法加载仪表板数据')
+  }
 })
 
 // 打开文档
@@ -247,7 +255,13 @@ const openDocument = (id) => {
 
 // 刷新仪表板
 const refreshDashboard = async () => {
-  await dashboardStore.fetchUserDashboard()
+  try {
+    await dashboardStore.fetchUserDashboard()
+  } catch (error) {
+    console.error('刷新仪表板失败:', error)
+    // 可以添加错误提示
+    dashboardStore.setError('无法加载仪表板数据')
+  }
 }
 
 // 搜索处理
@@ -256,6 +270,11 @@ const handleSearch = () => {
     // 跳转到搜索页面或执行搜索逻辑
     navigateTo(`/search?q=${encodeURIComponent(searchKeyword.value)}`)
   }
+}
+
+// 获取首字母
+function getInitial(name) {
+  return name ? name.charAt(0) : '未'
 }
 
 // 获取文档图标

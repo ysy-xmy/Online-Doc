@@ -145,7 +145,7 @@
       <!-- 文档列表 -->
       <div 
         v-else-if="dashboardStore.recentDocuments && dashboardStore.recentDocuments.length > 0" 
-        class="overflow-x-auto h-44"
+        class="overflow-x-auto h-48"
       >
         <table class="table table-zebra table-xs table-pin-rows">
           <thead>

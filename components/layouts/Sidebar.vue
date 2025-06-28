@@ -60,11 +60,26 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch ,onMounted} from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+const { $axios } = useNuxtApp();
 
 const router = useRouter()
 const route = useRoute()
+
+// onMounted(() => {
+//   //获取知识库列表
+//   $axios("api/workspaces", {
+//     method: "GET",
+//   })
+//     .then((res) => {
+//       console.log(res.data.workspaces);
+//     })
+//     .catch((err) => {
+//       console.log(err);
+//     });
+// })
+
 
 // 知识库二级菜单配置
 const knowledgeBaseMenus = [

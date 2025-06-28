@@ -1,63 +1,88 @@
 <template>
-  <div class="summary-panel" :class="{ visible: isVisible }">
-    <div v-if="isVisible" class="panel-toggle" @click="closePanel">
-      <Icon name="mdi:arrow-right" class="toggle-icon" />
-    </div>
-
-    <div class="panel-container">
-      <div class="panel-header">
-        <h3>AI生成内容摘要</h3>
+  <aside
+    class="document-sidebar-right absolute top-0 right-0 bottom-0 bg-base-200 border-l border-base-content/10 shadow-xl transition-all duration-500 ease-in-out z-50"
+    :class="{
+      'w-84': isVisible,
+      'w-0': !isVisible,
+    }"
+  >
+    <div v-if="isVisible" class="relative h-full flex">
+      <!-- 折叠/展开按钮 -->
+      <div class="panel-toggle" @click="closePanel">
+        <img
+          width="30"
+          height="30"
+          src="https://img.icons8.com/ios-filled/100/10A37F/back--v1.png"
+          alt="back--v1"
+        />
       </div>
 
-      <div class="panel-content">
-        <div v-if="error" class="error-state">{{ error }}</div>
-        <template v-else>
-          <div v-if="isLoading || isAISummaryLoading" class="loading-state">
-            <div class="spinner"></div>
-            <span>加载中...</span>
-          </div>
+      <!-- 侧边栏内容 -->
+      <div
+        class="flex-1 flex flex-col overflow-hidden transition-opacity duration-500"
+        :class="{
+          'opacity-100': isVisible,
+          'opacity-0': !isVisible,
+        }"
+      >
+        <div class="panel-header">
+          <h3>AI生成内容摘要</h3>
+        </div>
 
-          <div v-else-if="isProcessing" class="processing-state loading-state">
-            <div class="spinner"></div>
-            <div class="progress-bar">
-              <div class="progress" :style="{ width: `${progress}%` }"></div>
+        <div class="panel-content flex-1 overflow-y-auto">
+          <div v-if="error" class="error-state">{{ error }}</div>
+          <template v-else>
+            <div v-if="isLoading || isAISummaryLoading" class="loading-state">
+              <div class="spinner"></div>
+              <span>加载中...</span>
             </div>
-            <span>{{ progress }}% 处理中...</span>
-          </div>
-          <div
-            v-else
-            class="summary-box"
-            ref="summaryBox"
-            @scroll="handleScroll"
-          >
+
             <div
-              v-for="(summary, index) in summaries"
-              :key="index"
-              class="summary-item"
+              v-else-if="isProcessing"
+              class="processing-state loading-state"
             >
-              {{ summary }}
+              <div class="spinner"></div>
+              <div class="progress-bar">
+                <div class="progress" :style="{ width: `${progress}%` }"></div>
+              </div>
+              <span>{{ progress }}% 处理中...</span>
             </div>
-          </div>
-        </template>
-      </div>
+            <div
+              v-else
+              class="summary-box"
+              ref="summaryBox"
+              @scroll="handleScroll"
+            >
+              <div
+                v-for="(summary, index) in summaries"
+                :key="index"
+                class="summary-item"
+              >
+                {{ summary }}
+              </div>
+            </div>
+          </template>
+        </div>
 
-      <div class="panel-footer">
-        <span class="token-usage">字数: {{ summaryCharCount }}</span>
-        <div class="panel-footer">
-          <button @click="retryOperation" class="copy-btn retry-btn">
-            重试
-          </button>
-          <button class="copy-btn" @click="copySummary">复制摘要</button>
+        <div class="panel-footer sticky bottom-0 bg-base-200 z-10">
+          <span class="token-usage">字数: {{ summaryCharCount }}</span>
+          <div class="panel-footer2">
+            <button @click="retryOperation" class="copy-btn retry-btn">
+              重试
+            </button>
+            <button class="copy-btn" @click="copySummary">复制摘要</button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </aside>
 </template>
 
 <script setup>
 import { ref, computed, watch } from "vue";
 import useSummaryAI from "~/components/AI/useSummaryAI.js";
 import { documentApi } from "~/api/document";
+
 // 定义响应式变量
 const summaries = ref([]);
 // const documentContent = ref('报道提到，当被问及英国最终是否会允许美国飞机使用英国位于塞浦路斯和迪戈加西亚岛的军事基地但不提供任何其他支持时，哈曼回答说，"正是如此"。');
@@ -155,6 +180,17 @@ const summaryCharCount = computed(() => {
 
 const copySummary = async () => {
   try {
+    // 检查文档内容是否为空
+    if (!aiSummary.value && summaries.value.length === 0) {
+      alert("没有可复制的摘要内容");
+      return;
+    }
+
+    // 检查是否有错误
+    if (error.value) {
+      alert("当前存在错误，无法复制");
+      return;
+    }
     await navigator.clipboard.writeText(aiSummary.value);
     alert("AI摘要已复制");
   } catch (err) {
@@ -169,23 +205,14 @@ const retryOperation = () => {
 </script>
 
 <style scoped>
-.summary-panel {
-  position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 100vh;
-  width: 21rem;
-  background: #f8f8f8;
-  box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
-  transition: right 0.3s ease;
-  z-index: 998;
-  display: flex;
-  border-left: 1px solid #eee;
-  right: -21rem; /* 默认完全隐藏 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
 }
 
-.summary-panel.visible {
-  right: 0; /* 显示时回到原位 */
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 .panel-toggle {
@@ -206,12 +233,6 @@ const retryOperation = () => {
 
 .panel-toggle:hover {
   background: #f0f0f0;
-}
-
-.toggle-icon {
-  width: 24px;
-  height: 24px;
-  color: #666;
 }
 
 .panel-container {
@@ -280,7 +301,7 @@ const retryOperation = () => {
   color: #888;
 }
 
-.panel-footer {
+.panel-footer2 {
   /* 添加以下属性 */
   display: flex;
   gap: 8px; /* 控制按钮间距 */

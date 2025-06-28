@@ -64,7 +64,7 @@
 
     <!-- 快捷操作 -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-      <div class="card bg-base-200 shadow-xl">
+      <div class="card bg-base-200 hover:shadow-xl">
         <div class="card-body">
           <h2 class="card-title">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -84,7 +84,7 @@
         </div>
       </div>
 
-      <div class="card bg-base-200 shadow-xl">
+      <div class="card bg-base-200  hover:shadow-xl">
         <div class="card-body">
           <h2 class="card-title">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -95,19 +95,30 @@
           <p>快速找到您需要的内容</p>
           <div class="card-actions justify-end">
             <div class="form-control">
-              <div class="input-group">
+              <div class="relative">
                 <input
-                  type="text"
                   placeholder="搜索文档或知识库..."
-                  class="input input-bordered input-sm"
+                  class="input  border-gray-300 px-5 py-2 rounded-xl w-56 transition-all outline-none"
+                  name="search"
+                  type="search"
                   v-model="searchKeyword"
                   @keyup.enter="handleSearch"
                 />
-                <button class="btn btn-square btn-sm" @click="handleSearch">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </button>
+                <svg
+                  @click="handleSearch"
+                  class="size-5 absolute top-3 right-3 text-gray-500 cursor-pointer"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                    stroke-linejoin="round"
+                    stroke-linecap="round"
+                  ></path>
+                </svg>
               </div>
             </div>
           </div>
@@ -134,11 +145,11 @@
       <!-- 文档列表 -->
       <div 
         v-else-if="dashboardStore.recentDocuments && dashboardStore.recentDocuments.length > 0" 
-        class="overflow-x-auto"
+        class="overflow-x-auto h-44"
       >
-        <table class="table table-zebra">
+        <table class="table table-zebra table-xs table-pin-rows">
           <thead>
-            <tr>
+            <tr class="sticky top-0 z-10">
               <th class="min-w-44">文档名称</th>
               <th class="min-w-28">类型</th>
               <th class="min-w-20">状态</th>
@@ -148,7 +159,7 @@
               <th class="min-w-20">操作</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody >
             <tr
               v-for="doc in dashboardStore.recentDocuments"
               :key="doc.id"

@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-base-100 p-4">
+  <div class="bg-base-100 p-4 h-full flex flex-col">
     <!-- 错误提示 -->
     <div v-if="workspaceStore.error || documentStore.error" class="alert alert-error mb-4">
       <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -53,8 +53,8 @@
     </div>
 
     <!-- 文档列表 -->
-    <div v-else-if="documentStore.documents.length > 0" class="overflow-x-hidden">
-      <table class="table table-zebra">
+    <div v-else-if="documentStore.documents.length > 0" class="overflow-x-hidden flex-1 h-0">
+      <table class="table table-zebra table-pin-rows">
         <thead>
           <tr>
             <th class="min-w-36 overflow-ellipsis">文档名称</th>
@@ -67,6 +67,207 @@
           </tr>
         </thead>
         <tbody>
+          <tr
+            v-for="doc in documentStore.documents"
+            :key="doc.id"
+            class="hover:bg-base-200 cursor-pointer transition-all duration-200 group"
+            @click="openDocument(doc.id)"
+          >
+            <td class="group-hover:text-primary transition-colors">
+              <div class="flex items-center space-x-2">
+                <span class="text-base-content/70">{{ getDocumentIcon(doc.type) }}</span>
+                <span>{{ doc.title }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="badge badge-sm badge-outline">
+                {{ getDocumentTypeText(doc.type) }}
+              </div>
+            </td>
+            <td>
+              <div class="badge badge-sm whitespace-nowrap" :class="{
+                'badge-success': doc.status === 'PUBLISHED',
+                'badge-warning': doc.status === 'DRAFT',
+                'badge-error': doc.status === 'ARCHIVED'
+              }">
+                {{ getDocumentStatusText(doc.status) }}
+              </div>
+            </td>
+            <td class="group-hover:text-base-content/80 transition-colors">
+              <div class="flex items-center space-x-2">
+                <div class="avatar avatar-xs">
+                  <div class="w-6 h-6 rounded-full bg-primary text-primary-content flex items-center justify-center text-xs">
+                    {{ doc.creator.nickname?.[0] || doc.creator.username[0] }}
+                  </div>
+                </div>
+                <span>{{ doc.creator.nickname || doc.creator.username }}</span>
+              </div>
+            </td>
+            <td class="group-hover:text-base-content/80 transition-colors">
+              <div v-if="doc.lastModifier" class="flex items-center space-x-2">
+                <div class="avatar avatar-xs">
+                  <div class="w-6 h-6 rounded-full bg-secondary text-secondary-content flex items-center justify-center text-xs">
+                    {{ doc.lastModifier.nickname?.[0] || doc.lastModifier.username[0] }}
+                  </div>
+                </div>
+                <span>{{ doc.lastModifier.nickname || doc.lastModifier.username }}</span>
+              </div>
+              <span v-else class="text-base-content/50">-</span>
+            </td>
+            <td class="group-hover:text-base-content/80 transition-colors">
+              {{ formatDate(doc.updatedAt) }}
+            </td>
+            <td>
+              <div class="flex space-x-1">
+                <button
+                  class="btn btn-ghost btn-xs group-hover:opacity-100 transition-opacity"
+                  @click.stop="openDocument(doc.id)"
+                >
+                  查看
+                </button>
+                <button
+                  class="btn btn-ghost btn-xs group-hover:opacity-100 transition-opacity text-error"
+                  @click.stop="deleteDocument(doc.id)"
+                >
+                  删除
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr
+            v-for="doc in documentStore.documents"
+            :key="doc.id"
+            class="hover:bg-base-200 cursor-pointer transition-all duration-200 group"
+            @click="openDocument(doc.id)"
+          >
+            <td class="group-hover:text-primary transition-colors">
+              <div class="flex items-center space-x-2">
+                <span class="text-base-content/70">{{ getDocumentIcon(doc.type) }}</span>
+                <span>{{ doc.title }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="badge badge-sm badge-outline">
+                {{ getDocumentTypeText(doc.type) }}
+              </div>
+            </td>
+            <td>
+              <div class="badge badge-sm whitespace-nowrap" :class="{
+                'badge-success': doc.status === 'PUBLISHED',
+                'badge-warning': doc.status === 'DRAFT',
+                'badge-error': doc.status === 'ARCHIVED'
+              }">
+                {{ getDocumentStatusText(doc.status) }}
+              </div>
+            </td>
+            <td class="group-hover:text-base-content/80 transition-colors">
+              <div class="flex items-center space-x-2">
+                <div class="avatar avatar-xs">
+                  <div class="w-6 h-6 rounded-full bg-primary text-primary-content flex items-center justify-center text-xs">
+                    {{ doc.creator.nickname?.[0] || doc.creator.username[0] }}
+                  </div>
+                </div>
+                <span>{{ doc.creator.nickname || doc.creator.username }}</span>
+              </div>
+            </td>
+            <td class="group-hover:text-base-content/80 transition-colors">
+              <div v-if="doc.lastModifier" class="flex items-center space-x-2">
+                <div class="avatar avatar-xs">
+                  <div class="w-6 h-6 rounded-full bg-secondary text-secondary-content flex items-center justify-center text-xs">
+                    {{ doc.lastModifier.nickname?.[0] || doc.lastModifier.username[0] }}
+                  </div>
+                </div>
+                <span>{{ doc.lastModifier.nickname || doc.lastModifier.username }}</span>
+              </div>
+              <span v-else class="text-base-content/50">-</span>
+            </td>
+            <td class="group-hover:text-base-content/80 transition-colors">
+              {{ formatDate(doc.updatedAt) }}
+            </td>
+            <td>
+              <div class="flex space-x-1">
+                <button
+                  class="btn btn-ghost btn-xs group-hover:opacity-100 transition-opacity"
+                  @click.stop="openDocument(doc.id)"
+                >
+                  查看
+                </button>
+                <button
+                  class="btn btn-ghost btn-xs group-hover:opacity-100 transition-opacity text-error"
+                  @click.stop="deleteDocument(doc.id)"
+                >
+                  删除
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr
+            v-for="doc in documentStore.documents"
+            :key="doc.id"
+            class="hover:bg-base-200 cursor-pointer transition-all duration-200 group"
+            @click="openDocument(doc.id)"
+          >
+            <td class="group-hover:text-primary transition-colors">
+              <div class="flex items-center space-x-2">
+                <span class="text-base-content/70">{{ getDocumentIcon(doc.type) }}</span>
+                <span>{{ doc.title }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="badge badge-sm badge-outline">
+                {{ getDocumentTypeText(doc.type) }}
+              </div>
+            </td>
+            <td>
+              <div class="badge badge-sm whitespace-nowrap" :class="{
+                'badge-success': doc.status === 'PUBLISHED',
+                'badge-warning': doc.status === 'DRAFT',
+                'badge-error': doc.status === 'ARCHIVED'
+              }">
+                {{ getDocumentStatusText(doc.status) }}
+              </div>
+            </td>
+            <td class="group-hover:text-base-content/80 transition-colors">
+              <div class="flex items-center space-x-2">
+                <div class="avatar avatar-xs">
+                  <div class="w-6 h-6 rounded-full bg-primary text-primary-content flex items-center justify-center text-xs">
+                    {{ doc.creator.nickname?.[0] || doc.creator.username[0] }}
+                  </div>
+                </div>
+                <span>{{ doc.creator.nickname || doc.creator.username }}</span>
+              </div>
+            </td>
+            <td class="group-hover:text-base-content/80 transition-colors">
+              <div v-if="doc.lastModifier" class="flex items-center space-x-2">
+                <div class="avatar avatar-xs">
+                  <div class="w-6 h-6 rounded-full bg-secondary text-secondary-content flex items-center justify-center text-xs">
+                    {{ doc.lastModifier.nickname?.[0] || doc.lastModifier.username[0] }}
+                  </div>
+                </div>
+                <span>{{ doc.lastModifier.nickname || doc.lastModifier.username }}</span>
+              </div>
+              <span v-else class="text-base-content/50">-</span>
+            </td>
+            <td class="group-hover:text-base-content/80 transition-colors">
+              {{ formatDate(doc.updatedAt) }}
+            </td>
+            <td>
+              <div class="flex space-x-1">
+                <button
+                  class="btn btn-ghost btn-xs group-hover:opacity-100 transition-opacity"
+                  @click.stop="openDocument(doc.id)"
+                >
+                  查看
+                </button>
+                <button
+                  class="btn btn-ghost btn-xs group-hover:opacity-100 transition-opacity text-error"
+                  @click.stop="deleteDocument(doc.id)"
+                >
+                  删除
+                </button>
+              </div>
+            </td>
+          </tr>
           <tr
             v-for="doc in documentStore.documents"
             :key="doc.id"

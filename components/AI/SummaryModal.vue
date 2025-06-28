@@ -1,62 +1,67 @@
 <template>
-  <div class="summary-panel" :class="{ 'visible': isVisible }">
+  <div class="summary-panel" :class="{ visible: isVisible }">
     <div v-if="isVisible" class="panel-toggle" @click="closePanel">
-      <Icon
-        name='mdi:arrow-right' 
-        class="toggle-icon" 
-      />
+      <Icon name="mdi:arrow-right" class="toggle-icon" />
     </div>
 
     <div class="panel-container">
       <div class="panel-header">
         <h3>AI生成内容摘要</h3>
       </div>
-      
-      <div class="panel-content">
-      <div v-if="error" class="error-state">{{ error }}</div>
-      <template v-else>
-        <div v-if="isLoading || isAISummaryLoading" class="loading-state">
-          <div class="spinner"></div>
-          <span>加载中...</span>
-        </div>
 
-        <div v-else-if="isProcessing" class="processing-state loading-state">
-          <div class="spinner"></div>
-          <div class="progress-bar">
-            <div class="progress" :style="{ width: `${progress}%` }"></div>
+      <div class="panel-content">
+        <div v-if="error" class="error-state">{{ error }}</div>
+        <template v-else>
+          <div v-if="isLoading || isAISummaryLoading" class="loading-state">
+            <div class="spinner"></div>
+            <span>加载中...</span>
           </div>
-          <span>{{ progress }}% 处理中...</span>
-        </div>
-        <div v-else class="summary-box" ref="summaryBox" @scroll="handleScroll">
+
+          <div v-else-if="isProcessing" class="processing-state loading-state">
+            <div class="spinner"></div>
+            <div class="progress-bar">
+              <div class="progress" :style="{ width: `${progress}%` }"></div>
+            </div>
+            <span>{{ progress }}% 处理中...</span>
+          </div>
           <div
-            v-for="(summary, index) in summaries"
-            :key="index"
-            class="summary-item"
+            v-else
+            class="summary-box"
+            ref="summaryBox"
+            @scroll="handleScroll"
           >
-            {{ summary }}
+            <div
+              v-for="(summary, index) in summaries"
+              :key="index"
+              class="summary-item"
+            >
+              {{ summary }}
+            </div>
           </div>
-        </div>
-      </template>
-    </div>
-      
-      <div class="panel-footer">
-      <span class="token-usage">字数: {{ summaryCharCount }}</span>
-      <div class="panel-footer">
-        <button @click="retryOperation" class="copy-btn retry-btn">重试</button>
-        <button class="copy-btn" @click="copySummary">复制摘要</button>
+        </template>
       </div>
-    </div>
+
+      <div class="panel-footer">
+        <span class="token-usage">字数: {{ summaryCharCount }}</span>
+        <div class="panel-footer">
+          <button @click="retryOperation" class="copy-btn retry-btn">
+            重试
+          </button>
+          <button class="copy-btn" @click="copySummary">复制摘要</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
-import useSummaryAI from '~/components/AI/useSummaryAI.js';
-
+import { ref, computed, watch } from "vue";
+import useSummaryAI from "~/components/AI/useSummaryAI.js";
+import { documentApi } from "~/api/document";
 // 定义响应式变量
 const summaries = ref([]);
-const documentContent = ref('报道提到，当被问及英国最终是否会允许美国飞机使用英国位于塞浦路斯和迪戈加西亚岛的军事基地但不提供任何其他支持时，哈曼回答说，"正是如此"。');
+// const documentContent = ref('报道提到，当被问及英国最终是否会允许美国飞机使用英国位于塞浦路斯和迪戈加西亚岛的军事基地但不提供任何其他支持时，哈曼回答说，"正是如此"。');
+const documentContent = ref("");
 const summaryBox = ref(null);
 const isLoading = ref(true);
 const error = ref(null); // 新增统一错误状态
@@ -89,62 +94,73 @@ const closePanel = () => {
   emit("close");
 };
 
-
-
 // 添加对 props.summary 的监听
-watch(() => props.summary, (newVal) => {
-  if (newVal) {
-    summaries.value = [newVal]
+watch(
+  () => props.summary,
+  (newVal) => {
+    if (newVal) {
+      summaries.value = [newVal];
+    }
   }
-})
+);
 
 // 添加对 aiSummary 的监听
 watch(aiSummary, (newVal) => {
   if (newVal) {
-    summaries.value = [newVal]
-    isLoading.value = false
-  }
-})
-
-watch(() => props.isVisible, (newVal) => {
-  if (newVal) {
-    generateAISummary(); // 面板打开时自动生成摘要
+    summaries.value = [newVal];
+    isLoading.value = false;
   }
 });
 
-console.log("接收到的文档ID:", props.documentId);
-const generateAISummary = async () => { 
-  try { 
-    // 2. 检查内容是否为空
-    if (!documentContent.value) {
-      error.value = "内容为空";
-      return; // 直接返回，不继续执行
+watch(
+  () => props.isVisible,
+  (newVal) => {
+    if (newVal) {
+      generateAISummary(); // 面板打开时自动生成摘要
     }
-    await summarizeLongText(documentContent.value);
-  } catch (error) { 
-    error.value = "生成AI摘要失败";
-    console.error('生成AI摘要失败:', error)
   }
-}
+);
+
+console.log("接收到的文档ID:", props.documentId);
+const generateAISummary = async () => {
+  try {
+    // 1. 获取文档内容
+    const response = await documentApi.getById(props.documentId);
+    console.log("文档获取响应:", response);
+
+    // 2. 检查内容是否为空
+    documentContent.value = response.data.content;
+    if (!documentContent.value || documentContent.value.trim() === "") {
+      error.value = "文档内容为空";
+      return; // 直接返回，不生成摘要
+    }
+
+    // 3. 生成AI摘要
+    await summarizeLongText(documentContent.value);
+  } catch (err) {
+    error.value = "生成AI摘要失败";
+    console.error("生成AI摘要失败:", err);
+  }
+};
 
 // 计算有效字数（中文按字算，英文按单词算）
 const summaryCharCount = computed(() => {
   const text = aiSummary.value || summaries.value.join("");
   if (!text) return 0;
-  
+
   // 移除所有空格和标点（按需求调整）
   const cleanText = text.replace(/[\s\.,;:!?]/g, "");
   return cleanText.length;
 });
 
-const copySummary = async () => { 
-  try { 
-    await navigator.clipboard.writeText(aiSummary.value)
-    alert('AI摘要已复制')
-  } catch (err) { 
-    console.error('复制失败:', err)
+const copySummary = async () => {
+  try {
+    await navigator.clipboard.writeText(aiSummary.value);
+    alert("AI摘要已复制");
+  } catch (err) {
+    console.error("复制失败:", err);
   }
-}
+};
 // 重试操作
 const retryOperation = () => {
   error.value = null;
@@ -184,7 +200,7 @@ const retryOperation = () => {
   border-top-left-radius: 8px;
   border-bottom-left-radius: 8px;
   cursor: pointer;
-  box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
 }
 
@@ -234,9 +250,16 @@ const retryOperation = () => {
 }
 
 .error-state {
-  color: #f44336;
-  padding: 20px;
-  text-align: center;
+  background-color: #fff5f5; /* 浅红色背景 */
+  color: #dc2626; /* 更柔和的红色文字 */
+  padding: 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  animation: fadeIn 0.3s ease-out;
 }
 
 .summary-box {
@@ -292,6 +315,8 @@ const retryOperation = () => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

@@ -4,7 +4,7 @@
         <Sidebar />
 
         <!-- 主内容区 -->
-        <div class="flex-1 flex flex-col shadow-lg w-0">
+        <div class="flex-1 flex flex-col shadow-lg">
             <!-- 顶部导航栏 -->
             <div
                 class="navbar bg-base-100 border-b border-base-content/10 px-4 py-2 shadow-sm"
@@ -66,7 +66,36 @@
 <script setup>
 import Sidebar from "~/components/layouts/Sidebar.vue";
 import ThemeChange from "~/components/layouts/ThemeChange.vue";
+import { useUserStore } from "~/stores/user";
 
+//获取用户信息
+const userStore = useUserStore();
+
+// console.log("test1");
+
+//获取用户信息（如果没有则获取）
+const { $axios } = useNuxtApp();
+
+onMounted(() => {
+    if (localStorage.getItem("userInfo") === null) {
+        $axios("/api/auth/me", {
+            method: "GET",
+        })
+            .then((res) => {
+                userStore.$patch({
+                    id: res.data.id,
+                    username: res.data.username,
+                    nickname: res.data.nickname,
+                    avatar: res.data.avatar,
+                });
+
+                localStorage.setItem("userInfo", JSON.stringify(res.data));
+            })
+            .catch((err) => {
+                console.log(err);
+            });
+    } 
+});
 </script>
 
 <style>

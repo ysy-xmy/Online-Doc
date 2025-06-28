@@ -26,7 +26,7 @@
         }"
       >
         <!-- 选项卡切换 -->
-        <div class="tabs tabs-boxed mb-4 mx-2 mt-4 text-base-content">
+        <div class="tabs tabs-boxed mb-4 mx-2 mt-4">
           <a 
             v-for="tab in tabs" 
             :key="tab.id"
@@ -53,6 +53,11 @@
       </div>
     </div>
   </aside>
+  <FloatingButton @click="startSummary"/>
+  <SummaryModal
+      :isVisible="isAISummaryVisible"
+      @close="handleClosePanel"
+    />
 </template>
 
 <script setup>
@@ -60,7 +65,16 @@ import { provide, ref, computed, watch } from 'vue'
 import CommentTab from './tab/CommentTab.vue'
 import RevisionTab from './tab/RevisionTab.vue'
 import HistoryTab from './tab/HistoryTab.vue'
+import FloatingButton from '../AI/FloatingButton.vue'
+import SummaryModal from '../AI/SummaryModal.vue';
 
+const isAISummaryVisible = ref(false);
+const startSummary = () => {
+  isAISummaryVisible.value = !isAISummaryVisible.value
+}
+const handleClosePanel = () => {
+  isAISummaryVisible.value = false;
+}
 
 const props = defineProps({
   show: {

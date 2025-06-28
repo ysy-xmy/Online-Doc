@@ -31,10 +31,14 @@
                     </label>
                     <input
                         type="text"
-                        placeholder="请输入用户名"
+                        placeholder="请输入用户名（3-10位，不能包含中文）"
                         class="input input-bordered w-full"
                         v-model="username"
+                        @input="validateUsername"
                     />
+                    <div v-if="usernameError" class="text-error text-sm mt-1">
+                        {{ usernameError }}
+                    </div>
                 </div>
                 <div class="form-control w-full">
                     <label class="label">
@@ -76,8 +80,16 @@ definePageMeta({
 
 const username = ref("");
 const password = ref("");
+const usernameError = ref("");
 
 const handleLogin = () => {
+    // 验证用户名格式
+    validateUsername();
+    if (usernameError.value) {
+        alert("请检查用户名格式");
+        return;
+    }
+
     console.log("username.value", username.value);
     console.log("password.value", password.value);
     // 等后续接口开启在写
@@ -111,6 +123,29 @@ const handleLogin = () => {
         .catch((err) => {
             console.log("err", err);
         });
+};
+
+const validateUsername = () => {
+    if (!username.value) {
+        usernameError.value = "";
+        return;
+    }
+
+    // 检测中文字符 - 使用简单的Unicode范围检测
+    const hasChinese = /[\u4e00-\u9fa5]/.test(username.value);
+
+    if (hasChinese) {
+        usernameError.value = "用户名不能包含中文";
+        console.log("检测到中文字符:", username.value);
+        return;
+    }
+
+    if (username.value.length < 3 || username.value.length > 10) {
+        usernameError.value = "用户名长度应为3-10位";
+        return;
+    }
+
+    usernameError.value = "";
 };
 </script>
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full w-full flex flex-col overflow-y-auto bg-amber-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <div class="document-editor">
     <!-- 文档信息菜单 -->
     <Doc-Menu
       v-model:documentName="documentName"
@@ -23,32 +23,14 @@
     <!-- 评论按钮 -->
     <button
       @click="openSidebar"
-      class="cursor-pointer absolute bottom-10 right-40 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 h-10 w-10 rounded-full flex items-center justify-center transition-colors duration-200">
-      <img 
-        class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" 
-        src="https://img.icons8.com/?size=100&id=bOhSoikzLIic&format=png&color=000000" 
-      />
+      class="cursor-pointer absolute bottom-10 right-40 bg-gray-100 h-10 w-10 rounded-full">
+      <Icon :style="{ color: '#000' }" name="mdi:comment-outline" />
     </button>
-
-    <!-- AI生成摘要按钮 -->
-    <FloatingButton @click="startSummary" />
-    <SummaryModal :isVisible="isAISummaryVisible" :documentId="documentId" @close="handleClosePanel" />
   </div>
 </template>
 
 <script setup>
 import { useDocumentStore } from "@/stores/document";
-import FloatingButton from "@/components/AI/FloatingButton.vue";
-import SummaryModal from "@/components/AI/SummaryModal.vue";
-
-const isAISummaryVisible = ref(false);
-const startSummary = () => {
-  isAISummaryVisible.value = !isAISummaryVisible.value;
-};
-const handleClosePanel = () => {
-  isAISummaryVisible.value = false;
-};
-
 const documentStore = useDocumentStore();
 const documentInfo = documentStore.documentInfo;
 
@@ -131,14 +113,21 @@ const saveDocument = (name) => {
 </script>
 
 <style scoped>
+.document-editor {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
 .document-textarea {
   flex: 1;
-  padding: 1.25rem;
+  padding: 20px;
   border: none;
   resize: none;
-  font-size: 1rem;
+  font-size: 16px;
   line-height: 1.6;
   outline: none;
-
 }
 </style>

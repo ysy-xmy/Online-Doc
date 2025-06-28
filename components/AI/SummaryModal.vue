@@ -1,94 +1,66 @@
 <template>
   <div class="summary-panel" :class="{ 'visible': isVisible }">
-    <div v-if="isVisible" class="panel-toggle" @click="closePanel">
-      <Icon
-        name='mdi:arrow-right' 
-        class="toggle-icon" 
-      />
+    <div class="panel-header">
+      <h3>AI生成内容摘要</h3>
+      <!-- 折叠/展开按钮 -->
+      <div 
+        class="absolute top-1/2 -left-8 bg-base-300 rounded-l-lg shadow-md cursor-pointer transition-all duration-300 hover:bg-base-content/10"
+        @click="closePanel"
+      >
+        <div class="p-1.5 flex items-center justify-center">
+          <Icon name="mdi:arrow-right" class="h-8 w-8" />
+        </div>
+      </div>    
     </div>
-
-    <div class="panel-container">
-      <div class="panel-header">
-        <h3>AI生成内容摘要</h3>
-      </div>
-      
-      <div class="panel-content">
+    
+    <div class="panel-content ">
       <div v-if="error" class="error-state">{{ error }}</div>
       <template v-else>
+        <div class="summary-box" ref="summaryBox" @scroll="handleScroll">
+          <div v-for="(summary, index) in summaries" :key="index" class="summary-item">
+            {{ summary }}
+          </div>
+        </div>
         <div v-if="isLoading || isAISummaryLoading" class="loading-state">
           <div class="spinner"></div>
           <span>加载中...</span>
         </div>
-
-        <div v-else-if="isProcessing" class="processing-state loading-state">
-          <div class="spinner"></div>
-          <div class="progress-bar">
-            <div class="progress" :style="{ width: `${progress}%` }"></div>
-          </div>
-          <span>{{ progress }}% 处理中...</span>
-        </div>
-        <div v-else class="summary-box" ref="summaryBox" @scroll="handleScroll">
-          <div
-            v-for="(summary, index) in summaries"
-            :key="index"
-            class="summary-item"
-          >
-            {{ summary }}
-          </div>
-        </div>
       </template>
     </div>
-      
-      <div class="panel-footer">
+    
+    <div  class="panel-footer">
       <span class="token-usage">字数: {{ summaryCharCount }}</span>
-      <div class="panel-footer">
-        <button @click="retryOperation" class="copy-btn retry-btn">重试</button>
-        <button class="copy-btn" @click="copySummary">复制摘要</button>
-      </div>
-    </div>
+      <button class="copy-btn" @click="copySummary">复制摘要</button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import {  ref, onMounted } from 'vue'
 import useSummaryAI from '~/components/AI/useSummaryAI.js';
+import {documentApi} from '~/api/doc';
 
 // 定义响应式变量
 const summaries = ref([]);
-const documentContent = ref('报道提到，当被问及英国最终是否会允许美国飞机使用英国位于塞浦路斯和迪戈加西亚岛的军事基地但不提供任何其他支持时，哈曼回答说，"正是如此"。');
+const documentContent = ref('报道提到，当被问及英国最终是否会允许美国飞机使用英国位于塞浦路斯和迪戈加西亚岛的军事基地但不提供任何其他支持时，哈曼回答说，“正是如此”。'); // 直接使用预设文本
+// const documentContent = ref('');
 const summaryBox = ref(null);
 const isLoading = ref(true);
-const error = ref(null); // 新增统一错误状态
 
 // 初始化 AI 摘要相关逻辑
-const {
-  isLoading: isAISummaryLoading,
-  isProcessing,
-  progress,
-  summary: aiSummary,
-  error: aiError,
-  tokenUsage: aiTokenUsage,
-  summarizeLongText,
-} = useSummaryAI();
+const { isLoading: isAISummaryLoading, summary: aiSummary, error: aiError, tokenUsage: aiTokenUsage, summarizeLongText } = useSummaryAI();
 
 const props = defineProps({
   isVisible: Boolean,
   summary: String,
   error: String,
-  tokenUsage: Number,
-  documentId: String, // 接收文档ID
-});
+  tokenUsage: Number
+})
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits(['close'])
 const closePanel = () => {
-  summaries.value = [];
-  isLoading.value = false;
-  isProcessing.value = false;
-  progress.value = 0;
-  emit("close");
-};
-
+  emit('close')
+}
 
 
 // 添加对 props.summary 的监听
@@ -105,24 +77,21 @@ watch(aiSummary, (newVal) => {
     isLoading.value = false
   }
 })
-
 watch(() => props.isVisible, (newVal) => {
   if (newVal) {
     generateAISummary(); // 面板打开时自动生成摘要
   }
 });
 
-console.log("接收到的文档ID:", props.documentId);
 const generateAISummary = async () => { 
   try { 
-    // 2. 检查内容是否为空
-    if (!documentContent.value) {
-      error.value = "内容为空";
-      return; // 直接返回，不继续执行
-    }
-    await summarizeLongText(documentContent.value);
+    console.log('zhiwei:',documentContent.value)
+    // const response = await documentApi.getDocument()
+    // console.log(response)
+    // documentContent.value = response.data.content;
+    await summarizeLongText(documentContent.value)
+
   } catch (error) { 
-    error.value = "生成AI摘要失败";
     console.error('生成AI摘要失败:', error)
   }
 }
@@ -136,7 +105,6 @@ const summaryCharCount = computed(() => {
   const cleanText = text.replace(/[\s\.,;:!?]/g, "");
   return cleanText.length;
 });
-
 const copySummary = async () => { 
   try { 
     await navigator.clipboard.writeText(aiSummary.value)
@@ -145,63 +113,27 @@ const copySummary = async () => {
     console.error('复制失败:', err)
   }
 }
-// 重试操作
-const retryOperation = () => {
-  error.value = null;
-  generateAISummary();
-};
 </script>
 
 <style scoped>
 .summary-panel {
-  position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 100vh;
+  position: absolute;
+  right: -400px;
+  top: 0;
+  bottom: 0;
+  height: 90vh;
   width: 21rem;
   background: #f8f8f8;
   box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
   transition: right 0.3s ease;
   z-index: 998;
   display: flex;
+  flex-direction: column;
   border-left: 1px solid #eee;
-  right: -21rem; /* 默认完全隐藏 */
 }
 
 .summary-panel.visible {
-  right: 0; /* 显示时回到原位 */
-}
-
-.panel-toggle {
-  position: absolute;
-  left: -40px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: #f8f8f8;
-  border: 1px solid #eee;
-  border-right: none;
-  padding: 10px;
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
-  cursor: pointer;
-  box-shadow: -2px 0 5px rgba(0,0,0,0.05);
-  transition: all 0.3s ease;
-}
-
-.panel-toggle:hover {
-  background: #f0f0f0;
-}
-
-.toggle-icon {
-  width: 24px;
-  height: 24px;
-  color: #666;
-}
-
-.panel-container {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
+  right: 0;
 }
 
 .panel-header {
@@ -216,6 +148,15 @@ const retryOperation = () => {
   margin: 0;
   color: #10a37f;
   font-size: 18px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0 8px;
 }
 
 .panel-content {
@@ -239,17 +180,26 @@ const retryOperation = () => {
   text-align: center;
 }
 
-.summary-box {
-  max-height: 100%;
+.summary-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-text {
+  flex-grow: 1;
+  line-height: 1.6;
   overflow-y: auto;
+  padding-bottom: 20px;
 }
 
 .panel-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 24px;
+  padding: 12px 0;
   border-top: 1px solid #eee;
+  margin-top: auto;
 }
 
 .token-usage {
@@ -257,13 +207,6 @@ const retryOperation = () => {
   color: #888;
 }
 
-.panel-footer {
-  /* 添加以下属性 */
-  display: flex;
-  gap: 8px; /* 控制按钮间距 */
-  padding: 6px 10px;
-  align-items: center;
-}
 .copy-btn {
   background: #10a37f;
   color: white;
@@ -276,9 +219,6 @@ const retryOperation = () => {
 
 .copy-btn:hover {
   background: #0d8e6f;
-}
-.copy-btn .retry-btn {
-  padding: 6px 10px;
 }
 
 .spinner {

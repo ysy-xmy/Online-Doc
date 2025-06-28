@@ -32,15 +32,16 @@
                         </label>
                         <input
                             type="text"
-                            placeholder="请输入用户名"
+                            placeholder="请输入用户名（3-10位，不能包含中文）"
                             class="input input-bordered w-full"
                             v-model="username"
+                            @input="validateUsername"
                         />
                         <div
-                            v-if="!username"
+                            v-if="usernameError"
                             class="text-error text-sm mt-1"
                         >
-                            请输入用户名
+                            {{ usernameError }}
                         </div>
                     </div>
                     <div class="form-control">
@@ -145,10 +146,43 @@ const passwordError = computed(
         confirmPassword.value.length > 0
 );
 
+const usernameError = ref("");
+
+const validateUsername = () => {
+    if (!username.value) {
+        usernameError.value = "请输入用户名";
+        return;
+    }
+
+    // 检测中文字符 - 使用简单的Unicode范围检测
+    const hasChinese = /[\u4e00-\u9fa5]/.test(username.value);
+
+    if (hasChinese) {
+        usernameError.value = "用户名不能包含中文";
+        return;
+    }
+
+    if (username.value.length < 3 || username.value.length > 10) {
+        usernameError.value = "用户名长度应为3-10位";
+        return;
+    }
+
+    usernameError.value = "";
+};
+
 const handleRegister = () => {
+    // 先验证用户名
+    validateUsername();
+
     //检查字段是否完整
     if (!username.value || !password.value || !confirmPassword.value) {
         alert("请填写完整信息");
+        return;
+    }
+
+    // 检查用户名格式
+    if (usernameError.value) {
+        alert("请检查用户名格式");
         return;
     }
 
@@ -164,7 +198,7 @@ const handleRegister = () => {
         avatarId: selectedAvatarUrl.value, // 使用选中的头像ID
     });
 
-    console.log("data", data);
+    // console.log("data", data);
     // 发送注册请求到正确的接口
     fetch("http://8.134.200.53:8080/api/auth/register", {
         method: "POST",

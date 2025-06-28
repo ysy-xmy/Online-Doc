@@ -6,6 +6,7 @@ interface UserState {
     username: string;
     nickname: string;
     avatar: string;
+    email: string;
 }
 
 // 定义store
@@ -16,6 +17,7 @@ export const useUserStore = defineStore("user", {
         username: "",
         nickname: "",
         avatar: "",
+        email: "",
     }),
 
     actions: {},

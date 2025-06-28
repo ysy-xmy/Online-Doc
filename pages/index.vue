@@ -139,13 +139,13 @@
         <table class="table table-zebra">
           <thead>
             <tr>
-              <th>文档名称</th>
-              <th>类型</th>
-              <th>状态</th>
-              <th>创建人</th>
-              <th>最后修改</th>
-              <th>更新时间</th>
-              <th>操作</th>
+              <th class="min-w-44">文档名称</th>
+              <th class="min-w-28">类型</th>
+              <th class="min-w-20">状态</th>
+              <th class="min-w-28">创建人</th>
+              <th class="min-w-44">最后修改</th>
+              <th class="min-w-36">更新时间</th>
+              <th class="min-w-20">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -155,19 +155,21 @@
               class="cursor-pointer hover:bg-base-200 transition-all duration-200 group"
               @click="openDocument(doc.id)"
             >
-              <td class="group-hover:text-primary transition-colors">
+              <td>
                 <div class="flex items-center space-x-2">
-                  <span class="text-base-content/70">{{ getDocumentIcon(doc.type) }}</span>
-                  <span>{{ doc.title || '未命名文档' }}</span>
+                  <span class="text-base-content/70 mr-2">{{ getDocumentIcon(doc.type) }}</span>
+                  <div>
+                    <div class="font-bold">{{ doc.title || '未命名文档' }}</div>
+                  </div>
                 </div>
               </td>
               <td>
-                <div class="badge badge-sm badge-outline">
+                <div class="badge badge-outline badge-sm">
                   {{ getDocumentTypeText(doc.type) }}
                 </div>
               </td>
               <td>
-                <div class="badge badge-sm" :class="{
+                <div class="badge badge-sm whitespace-nowrap" :class="{
                   'badge-success': doc.status === 'PUBLISHED',
                   'badge-warning': doc.status === 'DRAFT',
                   'badge-error': doc.status === 'ARCHIVED'
@@ -175,34 +177,40 @@
                   {{ getDocumentStatusText(doc.status) }}
                 </div>
               </td>
-              <td class="group-hover:text-base-content/80 transition-colors">
-                <div class="flex items-center space-x-2">
-                  <div class="avatar avatar-xs">
-                    <div class="w-6 h-6 rounded-full bg-primary text-primary-content flex items-center justify-center text-xs">
+              <td>
+                <div class="flex items-center gap-3">
+                  <div class="avatar">
+                    <div class="mask mask-squircle w-8 h-8 bg-primary text-primary-content flex items-center justify-center">
                       {{ getInitial(doc.creator?.nickname || doc.creator?.username || '未知') }}
                     </div>
                   </div>
-                  <span>{{ doc.creator?.nickname || doc.creator?.username || '未知' }}</span>
+                  <div>
+                    <div class="font-bold text-sm">
+                      {{ doc.creator?.nickname || doc.creator?.username || '未知' }}
+                    </div>
+                  </div>
                 </div>
               </td>
-              <td class="group-hover:text-base-content/80 transition-colors">
-                <div v-if="doc.lastModifier" class="flex items-center space-x-2">
-                  <div class="avatar avatar-xs">
-                    <div class="w-6 h-6 rounded-full bg-secondary text-secondary-content flex items-center justify-center text-xs">
+              <td>
+                <div v-if="doc.lastModifier" class="flex items-center gap-3">
+                  <div class="avatar">
+                    <div class="mask mask-squircle w-8 h-8 bg-secondary text-secondary-content flex items-center justify-center">
                       {{ getInitial(doc.lastModifier.nickname || doc.lastModifier.username || '未知') }}
                     </div>
                   </div>
-                  <span>{{ doc.lastModifier.nickname || doc.lastModifier.username || '未知' }}</span>
+                  <div>
+                    <div class="font-bold text-sm">
+                      {{ doc.lastModifier.nickname || doc.lastModifier.username || '未知' }}
+                    </div>
+                  </div>
                 </div>
                 <span v-else class="text-base-content/50">-</span>
               </td>
-              <td class="group-hover:text-base-content/80 transition-colors">
-                {{ formatDate(doc.updatedAt) }}
+              <td>
+                <div class="text-sm">{{ formatDate(doc.updatedAt) }}</div>
               </td>
               <td>
-                <button class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                  查看
-                </button>
+                <button class="btn btn-ghost btn-xs">查看</button>
               </td>
             </tr>
           </tbody>
@@ -329,7 +337,9 @@ function formatDate(dateString) {
 </script>
 
 <style scoped>
-.table th:first-child {
-  width: 40%;
+/* 可以添加一些额外的样式来微调表格 */
+.table th, .table td {
+  padding: 12px 16px;
+  vertical-align: middle;
 }
 </style> 

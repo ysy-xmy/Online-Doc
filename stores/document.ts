@@ -1,14 +1,5 @@
 import { defineStore } from "pinia";
 
-// 防抖函数
-const debounce = (func: Function, delay: number) => {
-    let timeoutId: NodeJS.Timeout;
-    return (...args: any[]) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => func(...args), delay);
-    };
-};
-
 // 定义状态接口
 interface DocumentState {
     documentInfo: {

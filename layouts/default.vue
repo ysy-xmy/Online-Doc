@@ -66,21 +66,36 @@
 <script setup>
 import Sidebar from "~/components/layouts/Sidebar.vue";
 import ThemeChange from "~/components/layouts/ThemeChange.vue";
+import { useUserStore } from "~/stores/user";
 
-console.log("test1");
+//获取用户信息
+const userStore = useUserStore();
 
-//获取用户信息（测试与后端通信）
+// console.log("test1");
+
+//获取用户信息（如果没有则获取）
 const { $axios } = useNuxtApp();
-$axios("/api/auth/me", {
-    method: "GET",
-})
-    .then((res) => {
-        console.log("test2", res);
-    })
-    .catch((err) => {
-        console.log(err);
-    });
 
+onMounted(() => {
+    if (localStorage.getItem("userInfo") === null) {
+        $axios("/api/auth/me", {
+            method: "GET",
+        })
+            .then((res) => {
+                userStore.$patch({
+                    id: res.data.id,
+                    username: res.data.username,
+                    nickname: res.data.nickname,
+                    avatar: res.data.avatar,
+                });
+
+                localStorage.setItem("userInfo", JSON.stringify(res.data));
+            })
+            .catch((err) => {
+                console.log(err);
+            });
+    } 
+});
 </script>
 
 <style>

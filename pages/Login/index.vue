@@ -71,6 +71,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 import md5 from "crypto-js/md5";
+import { useUserStore } from "~/stores/user";
+
+// 获取用户信息
+const userStore = useUserStore();
+
 // 设置布局为空白布局
 definePageMeta({
     layout: "blank",
@@ -115,6 +120,17 @@ const handleLogin = () => {
                 useCookie("token", {
                     maxAge: res.data.expiresIn, // 设置过期时间(1天)
                 }).value = res.data.token;
+
+                //储存用户信息到store
+                userStore.$patch({
+                    id: res.data.user.id,
+                    username: res.data.user.username,
+                    nickname: res.data.user.nickname,
+                    avatar: res.data.user.avatar,
+                });
+
+                //存储用户信息到localStorage
+                localStorage.setItem("userInfo", JSON.stringify(res.data.user));
 
                 // 跳转到主页面
                 navigateTo("/");

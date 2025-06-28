@@ -1,5 +1,26 @@
 <template>
     <div class="min-h-screen flex items-center justify-center">
+        <!-- 成功提示框 -->
+        <div
+            v-if="showSuccessAlert"
+            class="alert alert-success fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="stroke-current shrink-0 h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+            </svg>
+            <span>注册成功，正在自动登录</span>
+        </div>
+
         <div class="card w-full max-w-md bg-base-100 shadow-xl">
             <div class="card-body">
                 <h2 class="card-title justify-center mb-2">注册账号</h2>
@@ -94,6 +115,11 @@
 
 <script setup lang="ts">
 import md5 from "crypto-js/md5";
+import { useUserStore } from "~/stores/user";
+
+// 获取用户信息
+const userStore = useUserStore();
+
 // 设置布局为空白布局
 definePageMeta({
     layout: "blank",
@@ -109,6 +135,7 @@ const selectedAvatar = ref(1); // 默认选择第一个头像
 const selectedAvatarUrl = ref(
     "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaorZgMPyu8LoRZ1DDdzcZR8DVWByDJI2xibafmUVeSSyIgZiboNWXMP9pun0OpmiciakV0ia6oyIcA27icLw/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1"
 ); // 默认选择第一个
+const showSuccessAlert = ref(false); // 控制成功提示框显示
 
 // 头像列表
 const avatars = ref([
@@ -138,6 +165,49 @@ const urlList = ref([
 const selectAvatar = (avatarId: number) => {
     selectedAvatar.value = avatarId;
     selectedAvatarUrl.value = urlList.value[avatarId - 1];
+};
+
+//登录函数
+const handleLogin = (data: any) => {
+    const requestData = JSON.stringify({
+        usernameOrEmail: data.usernameOrEmail,
+        password: data.password,
+    });
+
+    fetch("http://8.134.200.53:8080/api/auth/login", {
+        method: "POST",
+        body: requestData,
+        headers: {
+            "Content-Type": "application/json",
+        },
+    })
+        .then((res) => {
+            return res.json();
+        })
+        .then((res) => {
+           if (res.code === "SUCCESS") {
+                // 存储token(用Cookie)
+                useCookie("token", {
+                    maxAge: res.data.expiresIn, // 设置过期时间(1天)
+                }).value = res.data.token;
+
+                //储存用户信息到store
+                userStore.$patch({
+                    id: res.data.user.id,
+                    username: res.data.user.username,
+                    nickname: res.data.user.nickname,
+                    avatar: res.data.user.avatar,
+                });
+
+                //存储用户信息到localStorage
+                localStorage.setItem("userInfo", JSON.stringify(res.data.user));
+
+                // 跳转到主页面
+                setTimeout(() => {
+                    navigateTo("/");
+                }, 1500);
+            }
+        });
 };
 
 const passwordError = computed(
@@ -213,8 +283,17 @@ const handleRegister = () => {
         })
         .then((res: any) => {
             if (res.data.status === "ACTIVE") {
-                // 跳转到登录页面
-                navigateTo("/Login");
+                // 显示注册成功提示
+                showSuccessAlert.value = true;
+                // 3秒后自动隐藏提示框
+                setTimeout(() => {
+                    showSuccessAlert.value = false;
+                }, 3000);
+                // 调用登录接口
+                handleLogin({
+                    usernameOrEmail: username.value,
+                    password: md5(password.value).toString(),
+                });
             }
         })
         .catch((err) => {

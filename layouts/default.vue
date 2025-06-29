@@ -4,7 +4,7 @@
         <Sidebar />
 
         <!-- 主内容区 -->
-        <div class="flex-1 flex flex-col shadow-lg w-0">
+        <div class="flex-1 flex flex-col shadow-lg">
             <!-- 顶部导航栏 -->
             <div
                 class="navbar bg-base-100 border-b border-base-content/10 px-4 py-2 shadow-sm"
@@ -34,7 +34,7 @@
                             >
                                 <img
                                     alt="用户头像"
-                                    src="https://picsum.photos/200"
+                                    :src="userStore.avatar || '/avatar_1.webp'"
                                     class="object-cover"
                                 />
                             </div>
@@ -43,9 +43,18 @@
                             tabindex="0"
                             class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52"
                         >
-                            <li><a class="text-base-content">个人资料</a></li>
-                            <li><a class="text-base-content">设置</a></li>
-                            <li><a class="text-base-content">退出</a></li>
+                            <li>
+                                <a
+                                    class="text-base-content"
+                                    @click="showUserInfo"
+                                    >个人资料</a
+                                >
+                            </li>
+                            <li>
+                                <a class="text-base-content" @click="logout"
+                                    >退出</a
+                                >
+                            </li>
                         </ul>
                     </div>
                 </div>
@@ -60,13 +69,77 @@
                 </div>
             </div>
         </div>
+
+        <!-- 用户信息模块 -->
+        <UserInfo v-if="isUserInfoVisible" @close="hideUserInfo" />
     </div>
 </template>
 
 <script setup>
+import { ref, onMounted } from "vue";
 import Sidebar from "~/components/layouts/Sidebar.vue";
 import ThemeChange from "~/components/layouts/ThemeChange.vue";
+import UserInfo from "~/components/common/userInfo.vue";
+import { useUserStore } from "~/stores/user";
 
+//获取用户信息
+const userStore = useUserStore();
+
+// 用户信息显示状态
+const isUserInfoVisible = ref(false);
+
+// 显示用户信息
+const showUserInfo = () => {
+    isUserInfoVisible.value = true;
+};
+
+// 隐藏用户信息
+const hideUserInfo = () => {
+    isUserInfoVisible.value = false;
+};
+
+//退出登录
+const logout = () => {
+    localStorage.removeItem("userInfo");
+    navigateTo("/login");
+};
+
+// console.log("test1");
+
+//获取用户信息（如果没有则获取）
+const { $axios } = useNuxtApp();
+
+onMounted(() => {
+    if (localStorage.getItem("userInfo") === null) {
+        $axios("/api/auth/me", {
+            method: "GET",
+        })
+            .then((res) => {
+                userStore.$patch({
+                    id: res.data.id,
+                    username: res.data.username,
+                    nickname: res.data.nickname,
+                    avatar: res.data.avatar,
+                    email: res.data.email || "",
+                });
+
+                localStorage.setItem("userInfo", JSON.stringify(res.data));
+            })
+            .catch((err) => {
+                console.log(err);
+            });
+    } else {
+        // 从localStorage加载用户信息
+        const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+        userStore.$patch({
+            id: userInfo.id || "",
+            username: userInfo.username || "",
+            nickname: userInfo.nickname || "",
+            avatar: userInfo.avatar || "",
+            email: userInfo.email || "",
+        });
+    }
+});
 </script>
 
 <style>

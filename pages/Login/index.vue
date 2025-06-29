@@ -31,10 +31,14 @@
                     </label>
                     <input
                         type="text"
-                        placeholder="请输入用户名"
+                        placeholder="请输入用户名（3-10位，不能包含中文）"
                         class="input input-bordered w-full"
                         v-model="username"
+                        @input="validateUsername"
                     />
+                    <div v-if="usernameError" class="text-error text-sm mt-1">
+                        {{ usernameError }}
+                    </div>
                 </div>
                 <div class="form-control w-full">
                     <label class="label">
@@ -67,6 +71,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 import md5 from "crypto-js/md5";
+import { useUserStore } from "~/stores/user";
+
+// 获取用户信息
+const userStore = useUserStore();
+
 // 设置布局为空白布局
 definePageMeta({
     layout: "blank",
@@ -76,8 +85,16 @@ definePageMeta({
 
 const username = ref("");
 const password = ref("");
+const usernameError = ref("");
 
 const handleLogin = () => {
+    // 验证用户名格式
+    validateUsername();
+    if (usernameError.value) {
+        alert("请检查用户名格式");
+        return;
+    }
+
     console.log("username.value", username.value);
     console.log("password.value", password.value);
     // 等后续接口开启在写
@@ -104,6 +121,17 @@ const handleLogin = () => {
                     maxAge: res.data.expiresIn, // 设置过期时间(1天)
                 }).value = res.data.token;
 
+                //储存用户信息到store
+                userStore.$patch({
+                    id: res.data.user.id,
+                    username: res.data.user.username,
+                    nickname: res.data.user.nickname,
+                    avatar: res.data.user.avatar,
+                });
+
+                //存储用户信息到localStorage
+                localStorage.setItem("userInfo", JSON.stringify(res.data.user));
+
                 // 跳转到主页面
                 navigateTo("/");
             }
@@ -111,6 +139,29 @@ const handleLogin = () => {
         .catch((err) => {
             console.log("err", err);
         });
+};
+
+const validateUsername = () => {
+    if (!username.value) {
+        usernameError.value = "";
+        return;
+    }
+
+    // 检测中文字符 - 使用简单的Unicode范围检测
+    const hasChinese = /[\u4e00-\u9fa5]/.test(username.value);
+
+    if (hasChinese) {
+        usernameError.value = "用户名不能包含中文";
+        console.log("检测到中文字符:", username.value);
+        return;
+    }
+
+    if (username.value.length < 3 || username.value.length > 10) {
+        usernameError.value = "用户名长度应为3-10位";
+        return;
+    }
+
+    usernameError.value = "";
 };
 </script>
 

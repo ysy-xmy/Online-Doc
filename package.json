@@ -14,6 +14,7 @@
     "@duannx/vue-client-only": "^1.0.3",
     "@highlightjs/cdn-assets": "^11.11.1",
     "@highlightjs/vue-plugin": "^2.1.0",
+    "@pinia-plugin-persistedstate/nuxt": "^1.2.1",
     "@pinia/nuxt": "^0.11.1",
     "@tailwindcss/vite": "^4.1.10",
     "axios": "^1.10.0",

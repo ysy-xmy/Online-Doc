@@ -55,8 +55,10 @@
                     class="btn btn-primary w-full"
                     type="button"
                     @click="handleLogin"
+                    :class="{ 'btn-disabled': isLoading }"
                 >
-                    登录
+                    <span v-if="isLoading" class="loading loading-spinner"></span>
+                    {{ isLoading ? '登录中...' : '登录' }}
                 </button>
                 <div class="text-center mt-2">
                     <NuxtLink to="/Login/register" class="link link-primary"
@@ -86,6 +88,7 @@ definePageMeta({
 const username = ref("");
 const password = ref("");
 const usernameError = ref("");
+const isLoading = ref(false); // 添加 loading 状态
 
 const handleLogin = () => {
     // 验证用户名格式
@@ -95,9 +98,11 @@ const handleLogin = () => {
         return;
     }
 
-    console.log("username.value", username.value);
-    console.log("password.value", password.value);
-    // 等后续接口开启在写
+    // 如果正在加载中，直接返回
+    if (isLoading.value) return;
+
+    // 设置加载状态
+    isLoading.value = true;
 
     const data = JSON.stringify({
         usernameOrEmail: username.value,
@@ -122,22 +127,28 @@ const handleLogin = () => {
                 }).value = res.data.token;
 
                 //储存用户信息到store
-                userStore.$patch({
+                userStore.setUserInfo({
                     id: res.data.user.id,
                     username: res.data.user.username,
                     nickname: res.data.user.nickname,
                     avatar: res.data.user.avatar,
+                    email: res.data.user.email || '' // 添加 email 字段，如果不存在则使用空字符串
                 });
-
-                //存储用户信息到localStorage
-                localStorage.setItem("userInfo", JSON.stringify(res.data.user));
 
                 // 跳转到主页面
                 navigateTo("/");
+            } else {
+                // 登录失败时重置加载状态
+                isLoading.value = false;
+                // 可以添加错误提示
+                alert(res.message || '登录失败');
             }
         })
         .catch((err) => {
             console.log("err", err);
+            // 发生错误时重置加载状态
+            isLoading.value = false;
+            alert('网络错误，请稍后重试');
         });
 };
 

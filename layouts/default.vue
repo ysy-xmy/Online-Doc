@@ -18,23 +18,25 @@
                         />
                     </div>
                 </div>
-
                 <!-- 主题切换开关 -->
                 <ThemeChange />
+                <div class="text-base-content text-xl mx-2 text-bold">{{ userInfo.username }}</div>
 
                 <div class="flex-none">
+
                     <div class="dropdown dropdown-end">
                         <div
                             tabindex="0"
                             role="button"
                             class="btn btn-ghost btn-circle avatar"
                         >
+
                             <div
                                 class="w-10 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2"
                             >
                                 <img
                                     alt="用户头像"
-                                    :src="userStore.avatar || '/avatar_1.webp'"
+                                    :src="userInfo.avatar "
                                     class="object-cover"
                                 />
                             </div>
@@ -84,7 +86,7 @@ import { useUserStore } from "~/stores/user";
 
 //获取用户信息
 const userStore = useUserStore();
-
+const userInfo = userStore.getUserInfo();
 // 用户信息显示状态
 const isUserInfoVisible = ref(false);
 

@@ -1,12 +1,15 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
 import { useDocumentStore } from "@/stores/document";
 import _ from "lodash";
 
 
 import 'highlight.js/styles/atom-one-dark.min.css';
 import hljs from 'highlight.js/lib/common';
-
+import { useUserStore } from "@/stores/user";
+import { useDocumentStore as useDocStore } from "@/stores/document";
+const userStore = useUserStore();
+const userInfo = computed(() => userStore.userInfo);
 
 // 响应式变量
 const quillEditor = ref(null);
@@ -18,8 +21,9 @@ const yjsModule = ref(null);
 const quillBindingModule = ref(null);
 const websocketModule = ref(null);
 const localUser = ref({
-    name: `用户_${Math.random().toString(36).substr(2, 6)}`,
-    color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+    name: userInfo.value.username || '未命名用户',
+    id: userInfo.value.id || '',
+    color: userInfo.value.color || `hsl(${Math.random() * 360}, 70%, 50%)`,
     timestamp: Date.now(),
     cursorPosition: null,
     cursorLength: 0,
@@ -34,9 +38,9 @@ let provider = null;
 let awareness = null;
 const commentList = ref([]);
 const currentComment = ref(null);
-const documentStore = useDocumentStore();
-const documentInfo = useDocumentStore().documentInfo;
-const usersInfo = useDocumentStore().usersInfo;
+const documentStore = useDocStore();
+const documentInfo = useDocStore().documentInfo;
+const usersInfo = useDocStore().usersInfo;
 const emits = defineEmits(['openCommentPanel']);
 // 异步加载依赖
 const loadDependencies = async () => {
@@ -575,9 +579,7 @@ const initCollaborativeEditor = async () => {
         if (awareness) {
             awareness.setLocalStateField("user", {
                 name: localUser.value.name,
-                id:
-                    localUser.value.id ||
-                    Math.random().toString(36).substr(2, 9),
+                id: localUser.value.id || Math.random().toString(36).substr(2, 9),
                 color: localUser.value.color,
                 timestamp: Date.now(),
                 cursorPosition: null,
@@ -612,6 +614,24 @@ const initCollaborativeEditor = async () => {
             console.log("已添加 .ql-editor 滚动监听器");
         }
     });
+
+    // 监听用户信息变化
+    watch(() => userInfo.value, (newUserInfo) => {
+        // 更新 localUser
+        localUser.value = {
+            name: newUserInfo.username || '未命名用户',
+            id: newUserInfo.id || '',
+            color: newUserInfo.color || `hsl(${Math.random() * 360}, 70%, 50%)`,
+            timestamp: Date.now(),
+            cursorPosition: null,
+            cursorLength: 0,
+        };
+
+        // 如果已连接，更新 Awareness
+        if (awareness) {
+            awareness.setLocalStateField("user", localUser.value);
+        }
+    }, { immediate: true });
 
     // 直接监听 WebSocket 消息（绕过 Yjs 拦截）
 };

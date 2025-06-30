@@ -9,6 +9,7 @@ interface UserState {
     nickname: string;
     avatar: string;
     email: string;
+    color: string;
 }
 
 // 定义store
@@ -20,6 +21,7 @@ export const useUserStore = defineStore("userInfo", () => {
         nickname: "",
         avatar: "",
         email: "",
+        color: "",
     });
 
     // 初始化用户信息
@@ -37,7 +39,8 @@ export const useUserStore = defineStore("userInfo", () => {
                         username: parsedUser.username || "",
                         nickname: parsedUser.nickname || "",
                         avatar: parsedUser.avatar || "",
-                        email: parsedUser.email || ""
+                        email: parsedUser.email || "",
+                        color: parsedUser.color || `hsl(${Math.random() * 360}, 70%, 50%)`,
                     };
                 }
             } catch (error) {
@@ -86,6 +89,7 @@ export const useUserStore = defineStore("userInfo", () => {
             nickname: "",
             avatar: "",
             email: "",
+            color: "",
         };
         
         // 仅在客户端清除 localStorage

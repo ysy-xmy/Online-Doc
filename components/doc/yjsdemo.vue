@@ -103,7 +103,9 @@ const renderRemoteCursors = () => {
         ([clientID, state]) =>
             state.user &&
             state.user.cursorPosition !== undefined &&
-            state.user.cursorPosition !== null
+            state.user.cursorPosition !== null &&
+            // 排除当前用户的光标
+            state.user.id !== userInfo.value.id
     );
 
     users.forEach(([clientID, state]) => {
@@ -189,6 +191,22 @@ const debouncedRenderCursors = debounce(renderRemoteCursors, 50);
 
 // 防抖版本的渲染远程光标
 const debouncedRenderRemoteCursors = debounce(renderRemoteCursors, 50);
+
+// 防抖版本的窗口大小变化重新渲染光标
+const debouncedWindowResizeCursors = debounce(() => {
+    if (awareness && quill) {
+        const selection = quill.getSelection();
+        if (selection) {
+            const updatedUser = {
+                ...localUser.value,
+                cursorPosition: selection.index,
+                cursorLength: selection.length,
+            };
+            awareness.setLocalStateField("user", updatedUser);
+            debouncedRenderRemoteCursors();
+        }
+    }
+}, 200);
 
 // 初始化编辑器和协同功能
 const initCollaborativeEditor = async () => {
@@ -418,16 +436,24 @@ const initCollaborativeEditor = async () => {
     // 监听 Yjs 文本变更
     ytext.observe((event) => {
         // 只在有实际变更时才处理
+        console.log(event,'ssss')
         if (event.changes.delta && event.changes.delta.length > 0) {
             // console.log("检测到实际内容变更");
 
             const selection = quill.getSelection();
             console.log("当前选择:", selection);
 
+            // 判断是否为换行符插入
+            const isNewlineInsertion = event.changes.delta.some(
+                change => change.insert === '\n'
+            );
+
             // 渲染远程光标
             const updatedUser = {
                 ...localUser.value,
-                cursorPosition: selection?.index+1,
+                cursorPosition: isNewlineInsertion 
+                    ? (selection?.index ?? 0) + 1 
+                    : selection?.index,
                 cursorLength: selection?.length,
             };
 
@@ -615,6 +641,9 @@ const initCollaborativeEditor = async () => {
         if (editorElement) {
             editorElement.addEventListener("scroll", handleEditorScroll);
             console.log("已添加 .ql-editor 滚动监听器");
+
+            // 添加窗口大小变化监听器
+            window.addEventListener('resize', debouncedWindowResizeCursors);
         }
     });
 
@@ -851,6 +880,9 @@ onUnmounted(() => {
     if (quill && quill.root) {
         quill.root.removeEventListener('keydown', handleKeyboardEvent);
     }
+
+    // 移除窗口大小变化监听器
+    window.removeEventListener('resize', debouncedWindowResizeCursors);
 
     // 清空用户信息
     documentStore.$patch({

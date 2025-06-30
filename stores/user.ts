@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, computed } from "vue";
+import { useNuxtApp } from "nuxt/app";
 
 // 定义状态接口
 interface UserState {
@@ -11,7 +12,7 @@ interface UserState {
 }
 
 // 定义store
-export const useUserStore = defineStore("user", () => {
+export const useUserStore = defineStore("userInfo", () => {
     // 使用响应式状态
     const state = ref<UserState>({
         id: "",
@@ -21,16 +22,12 @@ export const useUserStore = defineStore("user", () => {
         email: "",
     });
 
-    // 手动从 localStorage 恢复状态
-    function initFromLocalStorage() {
-        // 仅在浏览器环境中执行
-        if (typeof window !== 'undefined' && window.localStorage) {
+    // 初始化用户信息
+    function initUserInfo() {
+        // 使用 useNuxtApp 确保仅在客户端执行
+        if (process.client) {
             try {
-                // 尝试从不同可能的键名获取数据
-                const storedUser = 
-                    localStorage.getItem('userInfo') || 
-                    localStorage.getItem('user') || 
-                    localStorage.getItem('pinia-userInfo');
+                const storedUser = localStorage.getItem('userInfo');
                 
                 if (storedUser) {
                     const parsedUser = JSON.parse(storedUser);
@@ -42,7 +39,6 @@ export const useUserStore = defineStore("user", () => {
                         avatar: parsedUser.avatar || "",
                         email: parsedUser.email || ""
                     };
-                    console.log('Successfully restored user from localStorage', state.value);
                 }
             } catch (error) {
                 console.error('Failed to parse user from localStorage', error);
@@ -51,16 +47,35 @@ export const useUserStore = defineStore("user", () => {
     }
 
     // 在 store 创建时立即尝试初始化
-    initFromLocalStorage();
+    initUserInfo();
 
     // 设置用户全部信息
     function setUserInfo(userInfo: UserState) {
         state.value = { ...userInfo };
+        
+        // 仅在客户端保存到 localStorage
+        if (process.client) {
+            try {
+                localStorage.setItem('userInfo', JSON.stringify(userInfo));
+            } catch (error) {
+                console.error('Failed to save user info to localStorage', error);
+            }
+        }
     }
 
     // 更新用户部分信息
     function updateUserInfo(partialInfo: Partial<UserState>) {
-        state.value = { ...state.value, ...partialInfo };
+        const updatedUser = { ...state.value, ...partialInfo };
+        state.value = updatedUser;
+        
+        // 仅在客户端更新 localStorage
+        if (process.client) {
+            try {
+                localStorage.setItem('userInfo', JSON.stringify(updatedUser));
+            } catch (error) {
+                console.error('Failed to update user info in localStorage', error);
+            }
+        }
     }
 
     // 重置用户信息
@@ -72,6 +87,15 @@ export const useUserStore = defineStore("user", () => {
             avatar: "",
             email: "",
         };
+        
+        // 仅在客户端清除 localStorage
+        if (process.client) {
+            try {
+                localStorage.removeItem('userInfo');
+            } catch (error) {
+                console.error('Failed to remove user info from localStorage', error);
+            }
+        }
     }
 
     // 获取用户完整信息
@@ -84,13 +108,17 @@ export const useUserStore = defineStore("user", () => {
         return !!state.value.id;
     }
 
-    // 获取用户显示名称（优先使用昵称）d
+    // 获取用户显示名称（优先使用昵称）
     function displayName(): string {
         return state.value.nickname || state.value.username || '未命名用户';
     }
 
+    // 添加一个计算属性，确保在服务端和客户端都能访问
+    const userInfo = computed(() => state.value);
+
     return {
         state,
+        userInfo,
         setUserInfo,
         updateUserInfo,
         resetUserInfo,
@@ -99,8 +127,8 @@ export const useUserStore = defineStore("user", () => {
         displayName
     };
 }, {
+    // 持久化配置（可选）
     persist: {
-        key: 'userInfo', // 明确指定存储 key
-        storage: localStorage,
+        storage: persistedState.localStorage,
     }
-} as any);
+});

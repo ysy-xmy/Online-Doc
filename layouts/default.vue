@@ -78,7 +78,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import Sidebar from "~/components/layouts/Sidebar.vue";
 import ThemeChange from "~/components/layouts/ThemeChange.vue";
 import UserInfo from "~/components/common/userInfo.vue";
@@ -86,11 +86,11 @@ import { useUserStore } from "~/stores/user";
 
 //获取用户信息
 const userStore = useUserStore();
-const userInfo = userStore.getUserInfo();
+const userInfo = computed(() => userStore.userInfo);
 // 用户信息显示状态
 const isUserInfoVisible = ref(false);
 
-// 显示用户信息
+// 显示用户信息s
 const showUserInfo = () => {
     isUserInfoVisible.value = true;
 };

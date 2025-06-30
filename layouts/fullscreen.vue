@@ -34,6 +34,7 @@
           <ThemeChange />
           <button class="btn btn-primary btn-sm">保存</button>
           <button class="btn btn-secondary btn-sm">分享</button>
+          <div class="text-base-content text-xl mx-2 text-bold">{{ userInfo.username }}</div>
           <div class="flex-none">
             <div class="dropdown dropdown-end">
               <div
@@ -46,7 +47,7 @@
                 >
                   <img
                     alt="用户头像"
-                    src="https://picsum.photos/200"
+                    :src="userInfo.avatar"
                     class="object-cover"
                   />
                 </div>
@@ -80,10 +81,12 @@
 
 <script setup>
 import ThemeChange from "~/components/layouts/ThemeChange.vue";
+import { useUserStore } from "~/stores/user";
 // 动态导入组件（避免服务端加载）
 const Editor = defineAsyncComponent(() => import('./editor.vue'));
 const router = useRouter();
-
+const userStore = useUserStore();
+const userInfo = userStore.userInfo;
 const goBack = () => {
   router.push("/"); // 返回到首页（默认布局）
 };

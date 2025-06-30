@@ -622,8 +622,7 @@ const initCollaborativeEditor = async () => {
 
     // 监听连接建立
     provider.on("connect", () => {
-        console.log(9999999);
-
+s
         // 设置本地用户状态
         if (awareness) {
             awareness.setLocalStateField("user", {
@@ -989,8 +988,9 @@ defineExpose({
     flex: 1;
     display: flex;
     flex-direction: column;
-    background-color: #f8f9fa;
     overflow: hidden;
+    align-items: flex-start;
+    background-color: white;
 }
 
 .floating-toolbar {
@@ -1034,9 +1034,7 @@ defineExpose({
     max-height: none;
     outline: none !important;
     background: white;
-    border: 1px solid #e9ecef;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     margin: 12px;
 }
 
@@ -1046,6 +1044,7 @@ defineExpose({
     font-size: 16px;
     border-radius: 8px;
     height: 100%;
+    width: 100%;
 }
 
 .ql-editor {

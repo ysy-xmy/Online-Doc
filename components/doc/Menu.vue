@@ -149,8 +149,8 @@ defineExpose({
     padding: 16px 24px;
     background: white;
     border-bottom: 1px solid #e9ecef;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     flex-shrink: 0; /* 防止头部被压缩 */
+    width: 100%;
 }
 
 .document-info {

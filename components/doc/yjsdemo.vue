@@ -314,66 +314,20 @@ const initCollaborativeEditor = async () => {
 
         // 实现 deleteAt 方法
         deleteAt(index, length) {
-            // 阻止删除操作
-            return;
+            // 允许完全删除评论标记
+            return super.deleteAt(index, length);
         }
 
         // 实现 split 方法
         split(index, value) {
-            // 创建左右两个节点的副本
-            const leftNode = this.domNode.cloneNode(true);
-            const rightNode = this.domNode.cloneNode(true);
-
-            // 尝试安全地处理评论标记
-            const commentMark = this.domNode.querySelector('.inline-comment-marker');
-            if (commentMark) {
-                // 确保两个节点都有评论标记
-                const leftCommentMark = leftNode.querySelector('.inline-comment-marker');
-                const rightCommentMark = rightNode.querySelector('.inline-comment-marker');
-                
-                if (leftCommentMark) leftCommentMark.remove();
-                if (rightCommentMark) rightCommentMark.remove();
-
-                // 复制评论数据
-                const commentData = JSON.parse(this.domNode.getAttribute('data-comment') || '{}');
-                
-                leftNode.setAttribute('data-comment', JSON.stringify(commentData));
-                rightNode.setAttribute('data-comment', JSON.stringify(commentData));
-
-                // 重新添加评论标记
-                leftNode.appendChild(commentMark.cloneNode(true));
-                rightNode.appendChild(commentMark.cloneNode(true));
-            }
-
-            return [leftNode, rightNode];
+            // 允许正常分割
+            return super.split(index, value);
         }
 
-        // 实现 optimize 方法
-        optimize(mutations) {
-            // 确保评论标记始终存在
-            if (!this.domNode.querySelector('.inline-comment-marker')) {
-                const commentMark = document.createElement('sup');
-                commentMark.classList.add('inline-comment-marker');
-                commentMark.style.backgroundColor = localUser.value.color || 'blue';
-                commentMark.style.color = 'white';
-                commentMark.style.borderRadius = '50%';
-                commentMark.style.padding = '0 4px';
-                commentMark.style.margin = '0 2px';
-                commentMark.style.fontSize = '8px';
-                commentMark.style.fontWeight = 'bold';
-                commentMark.style.cursor = 'pointer';
-                commentMark.style.display = 'inline-block';
-                commentMark.style.lineHeight = '1';
-                commentMark.style.verticalAlign = 'super';
-                commentMark.textContent = '•';
-                commentMark.contentEditable = 'false';
-                this.domNode.appendChild(commentMark);
-            }
-        }
         // 实现 isolate 方法
         isolate(index, length) {
-            // 返回当前节点，不做额外处理
-            return this.domNode;
+            // 允许正常隔离
+            return super.isolate(index, length);
         }
     }
 
@@ -682,6 +636,13 @@ const initCollaborativeEditor = async () => {
         }
     }, { immediate: true });
 
+    // 添加键盘事件监听器
+    nextTick(() => {
+        if (quill && quill.root) {
+            quill.root.addEventListener('keydown', handleKeyboardEvent);
+        }
+    });
+
     // 直接监听 WebSocket 消息（绕过 Yjs 拦截）
 };
 
@@ -700,6 +661,20 @@ const handleSelectionChange = (range, oldRange, source) => {
     if (range.length > 0) {
         toolbar.classList.add("active");
         positionToolbar(range);
+    } else {
+        // 明确隐藏工具栏
+        toolbar.classList.remove("active");
+    }
+};
+
+// 新增键盘事件监听
+const handleKeyboardEvent = (event) => {
+    const toolbar = floatingToolbar.value;
+    if (!toolbar) return;
+
+    // 如果按下删除键（Backspace 或 Delete）
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+        toolbar.classList.remove("active");
     }
 };
 
@@ -871,6 +846,11 @@ onUnmounted(() => {
     document
         .querySelector(".ql-editor")
         ?.removeEventListener("scroll", handleEditorScroll);
+
+    // 移除键盘事件监听器
+    if (quill && quill.root) {
+        quill.root.removeEventListener('keydown', handleKeyboardEvent);
+    }
 
     // 清空用户信息
     documentStore.$patch({

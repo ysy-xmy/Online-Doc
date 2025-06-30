@@ -89,9 +89,14 @@ const autoSave = () => {
 // 渲染远程光标的函数
 const renderRemoteCursors = () => {
     if (!isClient || !quill || !websocketModule.value) return;
+    
+    const editorContainer = document.querySelector(".ql-container");
+    const editorElement = document.querySelector(".ql-editor");
+    if (!editorContainer || !editorElement) return;
+
     // 清除之前的光标
-    const existingCursors = document.querySelectorAll(".remote-cursor");
-    existingCursors.forEach((cursor) => cursor.remove());
+    const existingCustomCursors = document.querySelectorAll(".remote-cursor");
+    existingCustomCursors.forEach((cursor) => cursor.remove());
 
     const allStates = awareness.getStates();
     const users = Array.from(allStates.entries()).filter(
@@ -103,25 +108,44 @@ const renderRemoteCursors = () => {
 
     users.forEach(([clientID, state]) => {
         try {
-            const bounds = quill.getBounds(state.user.cursorPosition);
-            console.log("bounds", bounds);
-            // 创建光标元素
+            // 获取光标位置的精确边界，增加容错处理
+            let bounds;
+            try {
+                bounds = quill.getBounds(state.user.cursorPosition);
+            } catch (boundsError) {
+                console.warn("获取光标边界失败:", boundsError);
+                return; // 跳过此用户的光标渲染
+            }
+
+            // 额外检查边界的有效性
+            if (!bounds || bounds.left === undefined || bounds.top === undefined) {
+                console.warn("无效的光标边界:", bounds);
+                return;
+            }
+
+            // 考虑编辑器的滚动偏移
+            const scrollTop = editorElement.scrollTop;
+            const scrollLeft = editorElement.scrollLeft;
+
             const cursorElement = document.createElement("div");
             cursorElement.classList.add("remote-cursor");
+            cursorElement.classList.add(`remote-cursor-${clientID}`);
             cursorElement.style.position = "absolute";
-            cursorElement.style.left = `${bounds.left}px`;
-            cursorElement.style.top = `${bounds.top}px`;
+            
+            // 使用相对定位，考虑滚动
+            cursorElement.style.left = `${bounds.left - scrollLeft}px`;
+            cursorElement.style.top = `${bounds.top - scrollTop}px`;
+            
             cursorElement.style.backgroundColor = state.user.color || "blue";
             cursorElement.style.width = "2px";
             cursorElement.style.height = `${bounds.height}px`;
+            cursorElement.style.zIndex = "1000";
+            cursorElement.style.pointerEvents = "none";
 
-            // 创建悬浮工具栏
-            const containerTooltip = document.createElement("div");
+            // 创建悬浮提示
             const tooltipElement = document.createElement("div");
             tooltipElement.classList.add("remote-cursor-tooltip");
             tooltipElement.textContent = state.user.name || "匿名用户";
-            tooltipElement.style.visibility = "visible";
-            tooltipElement.style.opacity = "0.7";
             tooltipElement.style.position = "absolute";
             tooltipElement.style.left = "12px";
             tooltipElement.style.top = "15px";
@@ -130,19 +154,12 @@ const renderRemoteCursors = () => {
             tooltipElement.style.fontSize = "10px";
             tooltipElement.style.padding = "2px";
             tooltipElement.style.borderRadius = "3px";
-            tooltipElement.style.boxShadow = "0 1px 3px rgba(0,0,0,0.12)";
-            tooltipElement.style.fontWeight = "500";
-            tooltipElement.style.borderRadius = "10px";
 
-            containerTooltip.appendChild(tooltipElement);
-            cursorElement.appendChild(containerTooltip);
+            cursorElement.appendChild(tooltipElement);
+            editorContainer.appendChild(cursorElement);
 
-            const editorContainer = document.querySelector(".ql-container");
-            if (editorContainer) {
-                editorContainer.appendChild(cursorElement);
-            }
         } catch (error) {
-            console.error("渲染光标时出错:", error);
+            console.error("渲染光标时出错:", error, "用户状态:", state);
         }
     });
 };
@@ -152,10 +169,23 @@ const handleEditorScroll = () => {
     console.log("编辑器滚动");
     // 重新渲染远程光标以确保位置正确
     debouncedRenderCursors();
+
+    // 额外处理：重新同步用户状态
+    if (awareness && quill) {
+        const selection = quill.getSelection();
+        if (selection) {
+            const updatedUser = {
+                ...localUser.value,
+                cursorPosition: selection.index,
+                cursorLength: selection.length,
+            };
+            awareness.setLocalStateField("user", updatedUser);
+        }
+    }
 };
 
 // 防抖版本的渲染远程光标（编辑器滚动）
-const debouncedRenderCursors = debounce(renderRemoteCursors, 1);
+const debouncedRenderCursors = debounce(renderRemoteCursors, 50);
 
 // 防抖版本的渲染远程光标
 const debouncedRenderRemoteCursors = debounce(renderRemoteCursors, 50);
@@ -440,15 +470,18 @@ const initCollaborativeEditor = async () => {
             const selection = quill.getSelection();
             console.log("当前选择:", selection);
 
-            // 更新用户状态
+            // 渲染远程光标
             const updatedUser = {
                 ...localUser.value,
-                cursorPosition: selection?.index,
+                cursorPosition: selection?.index+1,
                 cursorLength: selection?.length,
             };
 
-            // 渲染远程光标
-            renderRemoteCursors();
+            // 设置本地用户状态
+            awareness.setLocalStateField("user", updatedUser);
+
+            //这里是本地的光标渲染
+            debouncedRenderRemoteCursors();
 
             // 保持当前选择
             if (selection) {

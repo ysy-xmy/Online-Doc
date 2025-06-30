@@ -234,18 +234,30 @@ const initCollaborativeEditor = async () => {
             // 添加 data-index 属性
             node.setAttribute('data-index', commentData.range.index.toString());
             
-            // 创建更现代的评论标记
-            const commentMark = document.createElement('span');
+            // 创建更现代的评论标记（角标样式）
+            const commentMark = document.createElement('sup');
             commentMark.classList.add('inline-comment-marker');
+            commentMark.style.position = 'absolute';
+            commentMark.style.top = '-10px';
+            commentMark.style.right = '-10px';
             commentMark.style.backgroundColor = commentData.color || localUser.value.color;
             commentMark.style.color = 'white';
             commentMark.style.borderRadius = '3px';
-            commentMark.style.padding = '0 4px';
-            commentMark.style.margin = '0 2px';
-            commentMark.style.fontSize = '10px';
-            commentMark.style.fontWeight = 'bold';
+            commentMark.style.width = '15px';
+            commentMark.style.height = '15px';
+            commentMark.style.display = 'flex';
+            commentMark.style.alignItems = 'center';
+            commentMark.style.justifyContent = 'center';
+            commentMark.style.fontSize = '8px';
             commentMark.style.cursor = 'pointer';
-            commentMark.textContent = 'Comment';
+            commentMark.style.fontWeight = 'bold';
+            commentMark.style.border = '1px solid rgba(255,255,255,0.3)';
+            commentMark.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+            commentMark.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+            `;
             commentMark.contentEditable = 'false';
             
             // 清除之前的评论标记（如果存在）
@@ -260,6 +272,7 @@ const initCollaborativeEditor = async () => {
             // 设置样式
             node.style.position = 'relative';
             node.style.display = 'inline-block';
+            node.style.paddingRight = '4px';
             
             return node;
         }
@@ -309,17 +322,20 @@ const initCollaborativeEditor = async () => {
         optimize(mutations) {
             // 确保评论标记始终存在
             if (!this.domNode.querySelector('.inline-comment-marker')) {
-                const commentMark = document.createElement('span');
+                const commentMark = document.createElement('sup');
                 commentMark.classList.add('inline-comment-marker');
                 commentMark.style.backgroundColor = localUser.value.color || 'blue';
                 commentMark.style.color = 'white';
-                commentMark.style.borderRadius = '3px';
+                commentMark.style.borderRadius = '50%';
                 commentMark.style.padding = '0 4px';
                 commentMark.style.margin = '0 2px';
-                commentMark.style.fontSize = '10px';
+                commentMark.style.fontSize = '8px';
                 commentMark.style.fontWeight = 'bold';
                 commentMark.style.cursor = 'pointer';
-                commentMark.textContent = 'Comment';
+                commentMark.style.display = 'inline-block';
+                commentMark.style.lineHeight = '1';
+                commentMark.style.verticalAlign = 'super';
+                commentMark.textContent = '•';
                 commentMark.contentEditable = 'false';
                 this.domNode.appendChild(commentMark);
             }
@@ -993,11 +1009,19 @@ defineExpose({
 
 .inline-comment-marker {
     transition: all 0.2s ease;
+    opacity: 0.7;
+    transform: scale(0.9);
+}
+
+.inline-comment-marker svg {
+    stroke: white;
+    width: 8px;
+    height: 8px;
 }
 
 .inline-comment-marker:hover {
-    opacity: 0.8;
-    transform: scale(1.05);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 2px 3px rgba(0,0,0,0.15);
 }
 </style>

@@ -99,6 +99,10 @@ const renderRemoteCursors = () => {
     existingCustomCursors.forEach((cursor) => cursor.remove());
 
     const allStates = awareness.getStates();
+    
+    // 使用 Map 存储每个用户的最后一个光标状态
+    const userCursorMap = new Map();
+    
     const users = Array.from(allStates.entries()).filter(
         ([clientID, state]) =>
             state.user &&
@@ -109,6 +113,14 @@ const renderRemoteCursors = () => {
     );
 
     users.forEach(([clientID, state]) => {
+        // 如果已经有该用户的光标，只保留最后一个
+        if (!userCursorMap.has(state.user.id)) {
+            userCursorMap.set(state.user.id, { clientID, state });
+        }
+    });
+
+    // 渲染去重后的用户光标
+    Array.from(userCursorMap.values()).forEach(({ clientID, state }) => {
         try {
             // 获取光标位置的精确边界，增加容错处理
             let bounds;
@@ -563,14 +575,22 @@ const initCollaborativeEditor = async () => {
         );
 
         // 直接更新用户列表到 store
-        const formattedUsers = users
-            .filter((user) => user.user && user.user.name) // 过滤掉无效用户
-            .map((user) => ({
-                userName: user.user.name,
-                clientID: user.clientID,
-                color: user.user.color,
-                isLocal: user.clientID === awareness.clientID,
-            }));
+        const formattedUsers = Array.from(
+            // 使用 Map 去重，确保每个用户 id 只出现一次
+            new Map(
+                users
+                    .filter((user) => user.user && user.user.name) // 过滤掉无效用户
+                    .map((user) => [
+                        user.user.id, 
+                        {
+                            userName: user.user.name,
+                            clientID: user.clientID,
+                            color: user.user.color,
+                            isLocal: user.user.id === userInfo.value.id,
+                        }
+                    ])
+            ).values()
+        );
 
         documentStore.$patch({
             allUsersList: formattedUsers,

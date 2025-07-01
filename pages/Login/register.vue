@@ -199,11 +199,13 @@ const handleLogin = (data: any) => {
                 }).value = res.data.token;
 
                 //储存用户信息到store
-                userStore.$patch({
+                 userStore.setUserInfo({
                     id: res.data.user.id,
                     username: res.data.user.username,
                     nickname: res.data.user.nickname,
                     avatar: res.data.user.avatar,
+                    email: res.data.user.email || '', // 添加 email 字段，如果不存在则使用空字符串
+                    color: `hsl(${Math.random() * 360}, 70%, 50%)`,
                 });
 
                 //存储用户信息到localStorage

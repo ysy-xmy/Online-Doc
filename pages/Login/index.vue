@@ -1,6 +1,5 @@
 <template>
     <div class="login-page-wrapper relative w-full h-full">
-        <div class="background-animation absolute inset-0 z-0"></div>
         <div
             class="login-container flex items-stretch shadow-2xl rounded-2xl overflow-hidden relative glassmorphism-bg animate-bg z-10"
         >
@@ -212,17 +211,7 @@ onUnmounted(() => {
     left: 0;
     width: 100%;
     height: 100vh;
-    background: linear-gradient(
-        -45deg, 
-        #16a085, 
-        #2980b9, 
-        #27ae60, 
-        #2c3e50, 
-        #16a085
-    );
-    background-size: 400% 400%;
-    animation: gradient-flow 20s ease infinite;
-    overflow: hidden;
+   
 }
 
 @keyframes gradient-flow {
@@ -429,13 +418,11 @@ onUnmounted(() => {
 .glassmorphism-bg {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .glassmorphism-card {
     background: rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(15px);
-    border-radius: 1rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 

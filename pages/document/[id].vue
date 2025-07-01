@@ -1,73 +1,28 @@
 <template>
   <div class="h-full w-full flex flex-col overflow-y-auto dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-52">
-    <!-- 文档信息菜单 -->
-    <Doc-Menu
-      v-model:documentName="documentName"
-      :onlineUsers="onlineUsers"
-      @save="saveDocument"
-      ref="menuRef" />
-
-    <!-- 文档编辑器 -->
-    <Doc-yjsdemo 
-      ref="yjsdemoRef"
-      @openCommentPanel="openSidebar" 
+    <WriteRead
+      v-if="hasWritePermission"
     />
-
-    <!-- 文档侧边栏 -->
-    <Doc-DocumentSidebar
-      v-model:show="showSidebar"
-      :commentData="commentData"
-      @addComment="handleAddComment"
-      />
-
-    <!-- 评论按钮 -->
-    <button
-      @click="openSidebar"
-      class="cursor-pointer absolute bottom-10 right-40 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 h-10 w-10 rounded-full flex items-center justify-center transition-colors duration-200">
-      <img 
-        class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" 
-        src="https://img.icons8.com/?size=100&id=bOhSoikzLIic&format=png&color=000000" 
-      />
-    </button>
-
-    <!-- AI生成摘要按钮 -->
-    <FloatingButton @click="startSummary" />
-    <SummaryModal :isVisible="isAISummaryVisible" :documentId="documentId" @close="handleClosePanel" />
+    <ReadOnlyViewer
+      v-else
+    />
   </div>
 </template>
 
 <script setup>
-import { useDocumentStore } from "@/stores/document";
-import FloatingButton from "@/components/AI/FloatingButton.vue";
-import SummaryModal from "@/components/AI/SummaryModal.vue";
+import { ref, shallowRef, onMounted } from "vue";
+import { useRoute } from "vue-router";
+import { useUserStore } from "@/stores/user";
+import { collaborationApi } from "~/api/collaborators";
+import WriteRead from "./write_read.vue";
+import ReadOnlyViewer from "./ReadOnlyViewer.vue";
 
-const isAISummaryVisible = ref(false);
-const startSummary = () => {
-  isAISummaryVisible.value = !isAISummaryVisible.value;
-};
-const handleClosePanel = () => {
-  isAISummaryVisible.value = false;
-};
-
-const documentStore = useDocumentStore();
-const documentInfo = documentStore.documentInfo;
-
-// 使用 definePageMeta 指定全局布局
-definePageMeta({
-  layout: "fullscreen",
-});
-
-import { ref, provide } from 'vue'
-
+// 路由和状态管理
 const route = useRoute();
-const documentId = route.params.id;
-const commentData = ref(null);
-const documentContent = ref("");
-const documentName = ref("未命名文档");
-const showSidebar = ref(false);
-const menuRef = ref(null);
-const yjsdemoRef = ref(null);
-
+const userStore = useUserStore();
+const documentId =  route.params.id;
+const currentUserId = userStore.userId;
+const hasWritePermission = ref(true);
 // 模拟在线用户数据（后面连接）
 const onlineUsers = ref([
   {
@@ -84,50 +39,37 @@ const onlineUsers = ref([
   },
 ]);
 
-// 模拟获取文档内容的方法
-const fetchDocumentContent = async () => {
-  // 在实际应用中，这里应该是从后端获取文档内容
-  documentContent.value = `这是文档 ${documentId} 的内容`;
-  documentName.value = `文档 ${documentId}`;
-};
-
-const openSidebar = (data) => {
-  if (data) {
-    commentData.value = data
-  }
-  showSidebar.value = true;
-};
-
-// 处理添加评论的方法
-const handleAddComment = (commentData) => {
-  if (yjsdemoRef.value) {
-    // 直接传递 commentData，它已经包含了 hasSelectionId
-    const comment = yjsdemoRef.value.insertCommentAtPosition(commentData);
-
-    if (comment) {
-      // 更新评论数据并打开侧边栏
-      commentData.value = comment;
-      showSidebar.value = true;
-    }
-  }
-};
-
-onMounted(() => {
-  fetchDocumentContent();
+// 使用 definePageMeta 指定全局布局
+definePageMeta({
+  layout: "fullscreen",
 });
 
-// 保存文档的方法
-const saveDocument = (name) => {
-    documentInfo.value = name;
-    // 在实际应用中，这里应该调用后端保存接口
-    console.log("保存文档:", name, documentContent.value);
+// onMounted(() => {
+//   fetchCollaborators();
+// });
 
-  // 更新保存状态
-  if (menuRef.value) {
-    menuRef.value.setSaveStatus("已保存");
-    menuRef.value.setLastSaved(new Date());
-  }
-};
+// 获取协作者权限
+// const fetchCollaborators = async () => {
+//   try {
+    // console.log("文档id:",documentId)
+    // console.log('documentId 的类型:', typeof documentId);
+    // 获取文档协作者列表
+    // const id = Number(documentId)
+    // console.log('id 的类型:', typeof id);
+    // const response2 = await collaborationApi.getDocumentCollaborators(id)
+    // console.log("文档协作者列表：",response2.data)
+    // 判断当前用户是否有读写权限
+    // 只读权限，调用接口获取文档内容
+      // 示例调用，需根据实际文档获取接口调整
+    //   await fetchDocumentContent(documentId)
+    // hasWritePermission.value = response2.collaborators?.some(
+    //   collab => collab.userId === currentUserId && ['EDITOR', 'ADMIN'].includes(collab.role)
+    // )
+//   } catch (error) {
+//     console.error('权限检查失败:', error)
+//     hasWritePermission.value = false
+//   }
+// }
 </script>
 
 <style scoped>
@@ -139,6 +81,5 @@ const saveDocument = (name) => {
   font-size: 1rem;
   line-height: 1.6;
   outline: none;
-
 }
 </style>

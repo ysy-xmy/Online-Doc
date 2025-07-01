@@ -1,7 +1,11 @@
 <template>
   <div class="space-y-4 h-full flex flex-col">
-    <!-- 评论列表 容器可滚动 -->
-    <!-- {{ commentData }} -->
+    <!-- 选中文本展示区域 -->
+    <div v-if="commentData.selectedText" class="selected-text-container">
+      <div class="selected-text-content">
+        {{ commentData.selectedText }}
+      </div>
+    </div>
     <div 
       ref="commentsContainerRef"
       class="flex-grow overflow-y-auto max-h-[calc(100vh-200px)] pb-4">
@@ -27,71 +31,29 @@
           <div
             :class="[
               'chat',
-              comment.author !== '当前用户' ? 'chat-start' : 'chat-end',
+              comment.authorId !== userInfo.id ? 'chat-start' : 'chat-end',
             ]">
+  
             <div class="chat-image avatar">
               <div class="w-10 rounded-full">
-                <img :src="comment.avatar" :alt="comment.author" />
+                <img :src="comment.avatar" :alt="comment.nickname" />
               </div>
             </div>
             <div class="chat-header flex justify-between items-center">
               <div>
-                {{ comment.author !== "当前用户" ? comment.author : "" }}
+                {{ comment.authorId !== userInfo.id ? comment.nickname : "" }}
                 <time class="text-xs opacity-50 ml-2">{{ comment.time }}</time>
               </div>
             </div>
             <div
               :class="[
                 'chat-bubble',
-                comment.author === '当前用户'
+                comment.authorId === userInfo.id
                   ? 'bg-primary text-primary-content'
                   : 'bg-base-400 text-base-content',
               ]"
               :style="{ backgroundColor: comment.color }">
               {{ comment.text }}
-            </div>
-            <!-- 回复按钮 -->
-            <div
-              v-if="comment.author !== '当前用户'"
-              class="chat-footer opacity-50">
-              <button
-                class="text-xs hover:underline mr-2"
-                @click="setReferencedComment(comment)">
-                回复
-              </button>
-            </div>
-          </div>
-
-          <!-- 渲染该评论的所有回复 -->
-          <div
-            v-for="(reply, replyIndex) in comment.replies"
-            :key="`${commentIndex}-${replyIndex}`"
-            class="chat chat-end ml-12 right-4">
-            <div class="chat-image avatar">
-              <div class="w-10 rounded-full">
-                <img :src="reply.avatar" :alt="reply.author" />
-              </div>
-            </div>
-            <div class="chat-header">
-              {{ reply.author !== "当前用户" ? reply.author : "" }}
-              <time class="text-xs opacity-50 ml-2">{{ reply.time }}</time>
-            </div>
-            <div class="chat-bubble bg-primary text-primary-content">
-              {{ reply.text }}
-            </div>
-
-            <!-- 引用的原始消息 -->
-            <div
-              v-if="reply.referencedText && reply.author === '当前用户'"
-              class="mt-1 ml-4 text-sm flex flex-row p-2 rounded-lg bg-base-200 text-base-content max-w-[150px]">
-              <div
-                class="font-extrabold text-sm text-base-content/70 mb-1 w-20 whitespace-nowrap">
-                引用：
-              </div>
-              <div
-                class="inline-block overflow-hidden break-all whitespace-nowrap text-ellipsis">
-                {{ reply.referencedText }}
-              </div>
             </div>
           </div>
         </template>
@@ -101,47 +63,8 @@
     <!-- 底部输入区域 -->
     <div class="sticky bottom-0 left-0 right-0 p-2 border-t bg-base-100 z-10">
       <div class="flex flex-col space-y-2">
-        <!-- 引用提示 -->
-        <div
-          v-if="currentReferencedText"
-          class="bg-base-200 p-2 rounded-lg text-sm text-base-content flex justify-between items-center">
-          <span>
-            <span class="font-bold">引用：</span>
-            {{ currentReferencedText }}
-          </span>
-          <button
-            @click="clearReferencedComment"
-            class="text-base-content/50 hover:text-base-content">
-            ✕
-          </button>
-        </div>
-
         <div
           class="flex items-start space-x-2 bg-base-200 rounded-xl border px-3 py-1">
-          <!-- 表情按钮 -->
-          <div class="relative">
-            <button
-              @click="toggleEmojiPicker"
-              class="text-2xl"
-              ref="emojiButtonRef">
-              😊
-            </button>
-            <!-- 表情选择器 -->
-            <div
-              v-if="showEmojiPicker"
-              class="absolute bottom-full left-0 bg-base-100 border rounded-lg p-2 grid grid-cols-5 gap-2 shadow-lg z-50 w-[250px]"
-              ref="emojiPickerRef"
-              @click.stop>
-              <button
-                v-for="emoji in emojis"
-                :key="emoji"
-                @click="selectEmoji(emoji)"
-                class="text-2xl hover:bg-base-200 rounded">
-                {{ emoji }}
-              </button>
-            </div>
-          </div>
-
           <!-- 主输入框 -->
           <textarea
             v-model="mainComment"
@@ -176,7 +99,10 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from "vue";
-
+import { useUserStore } from "~/stores/user";
+//获取用户信息
+const userStore = useUserStore();
+const userInfo = computed(() => userStore.userInfo);
 const props = defineProps({
   commentData: {
     type: [Array, Object],
@@ -194,11 +120,15 @@ watch(
     if (newData) {
       const commentData = newData;
 
-      // 直接使用 comments 数组
+      // 清空原有的评论数据
+      comments.value = [];
+
       if (commentData.comments && commentData.comments.length > 0) {
         comments.value = commentData.comments.map((comment) => ({
           ...comment,
-          avatar: "https://picsum.photos/200/200?random=" + Math.floor(Math.random() * 5),
+          avatar: comment.avatar || userInfo.value?.avatar || "默认头像地址",
+          authorId: comment.authorId || userInfo.value?.id,
+          nickname: comment.nickname || userInfo.value?.nickname,
           time: comment.timestamp
             ? new Date(comment.timestamp).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -206,107 +136,25 @@ watch(
               })
             : "",
           color: commentData.color || "hsl(264.05, 70%, 50%)",
-          replies: comment.replies || [],
           selectionId: commentData.selectionId,
           index: commentData.index || commentData.range?.index,
         }));
-      } else {
-        comments.value = [];
       }
+
+      // 添加滚动到底部的逻辑
+      nextTick(() => {
+        if (commentsContainerRef.value) {
+          commentsContainerRef.value.scrollTop = commentsContainerRef.value.scrollHeight;
+        }
+      });
     }
   },
   { immediate: true }
 );
 
-const emojis = [
-  "😀",
-  "😃",
-  "😄",
-  "😅",
-  "😆",
-  "😊",
-  "😇",
-  "🙂",
-  "🙃",
-  "😉",
-  "❤️",
-  "👍",
-  "👏",
-  "🎉",
-  "🌟",
-];
-
 const mainComment = ref("");
-const showEmojiPicker = ref(false);
-const emojiButtonRef = ref(null);
-const emojiPickerRef = ref(null);
-
-const currentReferencedText = ref(null);
-const currentReferencedComment = ref(null);
-const emits = defineEmits(["addComment"]);
-// 处理全局点击事件
-const handleGlobalClick = (event) => {
-  // 主输入框表情选择器
-  if (
-    emojiButtonRef.value &&
-    emojiPickerRef.value &&
-    !emojiButtonRef.value.contains(event.target) &&
-    !emojiPickerRef.value.contains(event.target)
-  ) {
-    showEmojiPicker.value = false;
-  }
-};
-
-// 添加和移除全局点击事件监听器
-onMounted(() => {
-  document.addEventListener("click", handleGlobalClick);
-});
-
-onUnmounted(() => {
-  document.removeEventListener("click", handleGlobalClick);
-});
-
-const toggleEmojiPicker = (event) => {
-  // 阻止事件冒泡
-  event.stopPropagation();
-  showEmojiPicker.value = !showEmojiPicker.value;
-};
-
-const selectEmoji = (emoji) => {
-  // 根据当前是否在回复输入框中来决定插入位置
-  if (currentReferencedComment.value) {
-    currentReferencedComment.value.text += emoji;
-  } else {
-    mainComment.value += emoji;
-  }
-  showEmojiPicker.value = false;
-};
-
-const setReferencedComment = (comment) => {
-  currentReferencedText.value = comment.text;
-  currentReferencedComment.value = comment;
-};
-
-const clearReferencedComment = () => {
-  currentReferencedText.value = null;
-  currentReferencedComment.value = null;
-};
-
-const handleEnterKey = (event) => {
-  // 如果按下Shift+Enter，插入换行
-  if (event.ctrlKey) {
-    mainComment.value += "\n";
-    event.preventDefault();
-    return;
-  }
-
-  // 普通回车且有内容时发送
-  if (mainComment.value.trim()) {
-    addComment();
-  }
-};
-
 const commentsContainerRef = ref(null);
+const emits = defineEmits(["addComment"]);
 
 const addComment = () => {
   const trimmedComment = mainComment.value.trim();
@@ -314,7 +162,10 @@ const addComment = () => {
     const newComment = {
       id: Date.now(), 
       text: trimmedComment,
-      author: "当前用户",
+      authorId: userInfo.value?.id,
+      nickname: userInfo.value?.nickname,
+      avatar: userInfo.value?.avatar,
+      color: userInfo.value?.color,
       timestamp: new Date().toLocaleString().replace(/\//g, '/'),
     };
 
@@ -322,18 +173,11 @@ const addComment = () => {
     emits("addComment", {
       newComment: newComment,
       selectionId: props.commentData.selectionId,
-      range: props.commentData.range
+      range: props.commentData.range,
     });
 
     // 重置输入框
     mainComment.value = "";
-    showEmojiPicker.value = false;
-
-    // 重置输入框高度
-    const textarea = document.querySelector("textarea");
-    if (textarea) {
-      textarea.style.height = "auto";
-    }
 
     // 下一个渲染周期滚动到底部
     nextTick(() => {
@@ -362,6 +206,20 @@ const adjustTextareaHeight = (event) => {
     textarea.style.overflowY = "auto";
   }
 };
+
+const handleEnterKey = (event) => {
+  // 如果按下Shift+Enter，插入换行
+  if (event.ctrlKey) {
+    mainComment.value += "\n";
+    event.preventDefault();
+    return;
+  }
+
+  // 普通回车且有内容时发送
+  if (mainComment.value.trim()) {
+    addComment();
+  }
+};
 </script>
 
 <style scoped>
@@ -388,5 +246,25 @@ textarea::-webkit-scrollbar-track {
   white-space: pre-wrap;
   max-width: 100%;
   overflow-wrap: break-word;
+}
+
+.selected-text-container {
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  max-width: 100%;
+}
+
+.selected-text-content {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+  max-height: 4.5em; /* 3行的高度 */
+  color: #333;
+  font-size: 14px;
 }
 </style>

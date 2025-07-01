@@ -243,19 +243,11 @@ const initCollaborativeEditor = async () => {
         static create(value) {
             let node = super.create(value);
             
-            // 处理不同类型的输入
             let commentData = null;
             if (typeof value === 'object') {
-                // 如果是完整的对象，包括 node 属性
-                if (value.node) {
-                    // 复制单一属性
-                    commentData = JSON.parse(
-                        value.node.getAttribute('data-comment')
-                    );
-                } else {
-                    // 直接使用传入的对象
-                    commentData = value;
-                }
+                commentData = value.node 
+                    ? JSON.parse(value.node.getAttribute('data-comment'))
+                    : value;
             }
 
             // 确保有默认值
@@ -273,17 +265,22 @@ const initCollaborativeEditor = async () => {
             if (existingCommentMark) {
                 // 如果存在，更新现有的评论数据
                 const existingCommentData = JSON.parse(existingCommentMark.getAttribute('data-comment'));
+                
+                // 合并评论，去重
                 const mergedComments = [
                     ...existingCommentData.comments, 
                     ...commentData.comments
-                ];
+                ].filter((comment, index, self) => 
+                    index === self.findIndex((t) => (
+                        t.id === comment.id && t.text === comment.text
+                    ))
+                );
 
                 commentData = {
                     ...existingCommentData,
                     comments: mergedComments
                 };
 
-                // 使用现有的节点，而不是重新赋值
                 node = existingCommentMark;
             }
 
@@ -334,6 +331,21 @@ const initCollaborativeEditor = async () => {
             node.style.display = 'inline-block';
             node.style.paddingRight = '4px';
             
+            // 触发 Yjs 更新
+            try {
+                if (ydoc && ytext) {
+                    ydoc.transact(() => {
+                        const binding = quill.getModule('y-quill');
+                        if (binding) {
+                            binding.ytext.delete(0, binding.ytext.length);
+                            binding.ytext.insert(0, quill.root.innerHTML);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('CommentBlot 更新时出错:', error);
+            }
+
             return node;
         }
 
@@ -364,7 +376,9 @@ const initCollaborativeEditor = async () => {
     CommentBlot.blotName = 'comment';
     CommentBlot.tagName = 'span';
 
-    Quill.register(CommentBlot);
+    Quill.register({
+        'blots/comment': CommentBlot
+    }, true);
 
     // 创建 Quill 编辑器实例
     quill = new Quill(quillEditor.value, {
@@ -378,6 +392,10 @@ const initCollaborativeEditor = async () => {
                 delay: 1000,
                 maxStack: 500,
                 userOnly: true,
+            },
+            'y-quill': {
+                ytext: ytext,
+                awareness: awareness
             }
         },
         placeholder: "开始协同编辑...",
@@ -817,6 +835,7 @@ const addComment = () => {
             index: selection.index,
             length: selection.length
         },
+        selectedText: selectedText,
         index: selection.index,
         color: localUser.value.color,
         createTime: new Date().toLocaleString().replace(/\//g, '/'),
@@ -841,7 +860,7 @@ const addComment = () => {
 
 // 插入评论的方法（支持外部调用）
 const insertCommentAtPosition = (commentData) => {
-  if (!quill || !awareness) return null;
+  if (!quill || !awareness || !ytext) return null;
 
   // 获取现有的评论标记
   const existingCommentMark = quill.root.querySelector(`[data-comment][id="${commentData.selectionId}"]`);
@@ -856,21 +875,50 @@ const insertCommentAtPosition = (commentData) => {
 
   // 准备新的评论
   const newComment = {
-    id: Date.now(), // 生成唯一ID
+    id: Date.now(), 
     text: commentData.newComment.text,
-    author: '当前用户',
+    authorId: userInfo.value?.id,
+    nickname: userInfo.value?.nickname || '匿名用户',
+    avatar: userInfo.value?.avatar || '默认头像地址',
+    color: userInfo.value?.color || `hsl(${Math.random() * 360}, 70%, 50%)`,
     timestamp: new Date().toLocaleString().replace(/\//g, '/'),
   };
 
   // 更新现有评论数据
   existingCommentData.comments.push(newComment);
 
-  // 更新 data-comment 属性
-  existingCommentMark.setAttribute('data-comment', JSON.stringify(existingCommentData));
+  // 获取评论标记的位置和长度
+  const index = parseInt(existingCommentMark.getAttribute('data-index'), 10);
+  const length = JSON.parse(existingCommentMark.getAttribute('data-comment')).range.length;
 
-  // 打开侧边评论面板
-  emits('openCommentPanel', existingCommentData);
-  currentComment.value = existingCommentData;
+  // 删除原有的评论标记
+  quill.deleteText(index, length + 1);
+
+  // 重新插入带有更新后评论数据的标记
+  const updatedCommentData = {
+    ...existingCommentData,
+    range: { index, length }
+  };
+
+  // 在原位置重新插入评论标记
+  quill.insertEmbed(index, 'comment', updatedCommentData);
+
+  // 显式触发 Yjs 更新
+  try {
+    ydoc.transact(() => {
+      const binding = quill.getModule('y-quill');
+      if (binding) {
+        binding.ytext.delete(0, binding.ytext.length);
+        binding.ytext.insert(0, quill.root.innerHTML);
+      }
+    });
+
+    // 打开侧边评论面板
+    emits('openCommentPanel', existingCommentData);
+    currentComment.value = existingCommentData;
+  } catch (error) {
+    console.error('触发 Yjs 更新时出错:', error);
+  }
 
   return existingCommentData;
 };

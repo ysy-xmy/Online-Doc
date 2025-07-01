@@ -8,13 +8,17 @@
   >
     <div v-if="isVisible" class="relative h-full flex">
       <!-- 折叠/展开按钮 -->
-      <div class="panel-toggle" @click="closePanel">
-        <img
-          width="30"
-          height="30"
+       <div 
+        class="absolute top-1/2 -left-8 bg-base-300 rounded-l-lg shadow-md cursor-pointer transition-all duration-300 hover:bg-base-content/10"
+        @click="closePanel"
+      >
+        <div class="p-1.5 flex items-center justify-center">
+          <img
+          class="h-8 w-8"
           src="https://img.icons8.com/ios-filled/100/10A37F/back--v1.png"
           alt="back--v1"
         />
+        </div>
       </div>
 
       <!-- 侧边栏内容 -->
@@ -213,26 +217,6 @@ const retryOperation = () => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-.panel-toggle {
-  position: absolute;
-  left: -40px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: #f8f8f8;
-  border: 1px solid #eee;
-  border-right: none;
-  padding: 10px;
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
-  cursor: pointer;
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-}
-
-.panel-toggle:hover {
-  background: #f0f0f0;
 }
 
 .panel-container {

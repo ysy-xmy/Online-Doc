@@ -16,7 +16,7 @@
           <!-- <Icon name="mdi:arrow-right" class="h-8 w-8" /> -->
           <img
           class="h-8 w-8"
-          src="https://img.icons8.com/ios-filled/100/000000/back--v1.png"
+          src="https://img.icons8.com/color/48/back--v1.png"
           alt="back--v1"
         />
         </div>

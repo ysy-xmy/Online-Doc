@@ -19,6 +19,16 @@
             </div>
         </div>
 
+        <div class="revision-mode-toggle">
+            <span class="revision-mode-label">修订模式</span>
+            <input 
+                type="checkbox" 
+                class="toggle toggle-primary" 
+                :checked="isRevisionMode"
+                @change="handleRevisionModeToggle"
+            />
+        </div>
+
         <div class="online-users">
             <div class="users-info">
                 <span class="users-count">
@@ -60,7 +70,11 @@ const props = defineProps({
 });
 
 // 定义emits
-const emit = defineEmits(["update:documentName", "save"]);
+const emit = defineEmits([
+    "update:documentName", 
+    "save", 
+    "toggleRevisionMode"
+]);
 
 // 使用 store 中的文档信息
 const documentStore = useDocumentStore();
@@ -139,6 +153,15 @@ defineExpose({
         documentStore.updateLastSaved(date);
     },
 });
+
+// 添加 ref 和 emit
+const isRevisionMode = ref(false);
+
+// 监听修订模式切换
+const handleRevisionModeToggle = () => {
+    isRevisionMode.value = !isRevisionMode.value;
+    emit("toggleRevisionMode", isRevisionMode.value);
+};
 </script>
 
 <style scoped>
@@ -225,6 +248,46 @@ defineExpose({
     height: 8px;
     border-radius: 50%;
     background-color: currentColor;
+}
+
+.revision-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.revision-mode-label {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.toggle {
+    width: 40px;
+    height: 20px;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+}
+
+.toggle.toggle-primary {
+    background-color: #007bff;
+}
+
+.toggle.toggle-primary::before {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s;
+}
+
+.toggle.toggle-primary.checked::before {
+    transform: translateX(20px);
 }
 
 .online-users {

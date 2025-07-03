@@ -49,6 +49,9 @@ const documentStore = useDocStore();
 const documentInfo = useDocStore().documentInfo;
 const usersInfo = useDocStore().usersInfo;
 const emits = defineEmits(["openCommentPanel"]);
+const revisionMode = ref(false);
+let oldDocumentState;
+
 // 异步加载依赖
 const loadDependencies = async () => {
   if (!isClient) return;
@@ -516,7 +519,6 @@ const initCollaborativeEditor = async () => {
       // console.log("检测到实际内容变更");
 
       const selection = quill.getSelection();
-      console.log("当前选择:", selection);
 
       // 判断是否为换行符插入
       const isNewlineInsertion = event.changes.delta.some(
@@ -1033,6 +1035,237 @@ const insertCommentAtPosition = (commentData) => {
   return existingCommentData;
 };
 
+// 设置修订模式的方法
+const setRevisionMode = (mode) => {
+  revisionMode.value = mode;
+  
+  if (quill) {
+    if (mode) {
+      // 启用修订模式
+      quill.enable(true);
+      quill.root.classList.add('revision-mode');
+      quill.on('text-change', handleRevisionChange);
+
+      // 补充所有修订内容的按钮
+      nextTick(() => {
+        addRevisionButtons();
+      });
+    } else {
+      // 关闭修订模式
+      quill.root.classList.remove('revision-mode');
+      quill.off('text-change', handleRevisionChange);
+
+      // 移除所有修订按钮
+      removeRevisionButtons();
+    }
+  }
+};
+
+const handleRevisionChange = (delta, oldDelta, source) => {
+  if (source !== 'user' || !revisionMode.value) return;
+
+  console.log('完整的 Delta:', delta);
+
+  let currentIndex = 0;
+
+  delta.ops.forEach((op) => {
+    console.log('当前操作:', op);
+    
+    if (op.retain) {
+      currentIndex += op.retain;
+    } else if (op.insert) {
+      handleAddition(op, currentIndex);
+      currentIndex += op.insert.length;
+    } else if (op.delete) {
+      console.log('删除内容类型:', typeof op.delete, op.delete);
+      handleDeletion(op, currentIndex);
+    }
+  });
+};
+
+const handleAddition = (op, index) => {
+  let content = op.insert;
+  if (content === '\n' || typeof content !== 'string') return;
+
+  const Quill = quillModule.value.default;
+  const Inline = Quill.import('blots/inline');
+
+  // 检查当前位置是否已经有 data-new
+  const [leaf, offset] = quill.getLeaf(index);
+  if (leaf && leaf.parent && leaf.parent.domNode && leaf.parent.domNode.hasAttribute('data-new')) {
+    const node = leaf.parent.domNode;
+    let data = JSON.parse(node.getAttribute('data-new'));
+    // 获取当前节点的全部文本内容
+    const newContent = node.innerText || node.textContent;
+    data.content = newContent;
+    data.timestamp = Date.now();
+    data.hint = `新增：${newContent}`;
+    node.setAttribute('data-new', JSON.stringify(data));
+    return;
+  }
+
+  class NewContentBlot extends Inline {
+    static create(value) {
+      const node = super.create(value);
+
+      // 始终用最新的信息覆盖
+      const newContentData = {
+        type: 'add',
+        content: value.content || value,
+        timestamp: Date.now(),
+        userId: userInfo.value.id,
+        hint: `新增：${value.content || value}`
+      };
+      node.setAttribute('data-new', JSON.stringify(newContentData));
+      node.style.color = 'red';
+      node.style.textDecoration = 'none';
+
+      // // 插入操作按钮
+      // if (revisionMode.value) {
+      //   const applyBtn = document.createElement('button');
+      //   applyBtn.textContent = '应用';
+      //   applyBtn.className = 'revision-apply-btn';
+      //   const rejectBtn = document.createElement('button');
+      //   rejectBtn.textContent = '拒绝';
+      //   rejectBtn.className = 'revision-reject-btn';
+      //   node.appendChild(applyBtn);
+      //   node.appendChild(rejectBtn);
+      // }
+      return node;
+    }
+    static value(node) {
+      const newContentData = node.getAttribute('data-new');
+      return newContentData ? JSON.parse(newContentData) : null;
+    }
+  }
+  NewContentBlot.blotName = 'newContent';
+  NewContentBlot.tagName = 'span';
+  Quill.register(NewContentBlot, true);
+
+  // 只包裹没有 data-new 的内容
+  quill.formatText(index, content.length, 'newContent', {
+    type: 'add',
+    content: content,
+    timestamp: Date.now(),
+    userId: userInfo.value.id,
+    hint: `新增：${content}`
+  });
+};
+
+const handleDeletion = (op, index) => {
+  const content = op.delete;
+  let deletedText = '';
+  
+  if (typeof content === 'number') {
+    try {
+      deletedText = quill.getText(index-1, content);
+    } catch (error) {
+      console.error('获取删除文本时出错:', error);
+      return;
+    }
+  } else if (typeof content !== 'string') {
+    console.warn('删除的内容不是字符串或数字，跳过处理:', content);
+    return;
+  } else {
+    deletedText = content;
+  }
+
+  if (!deletedText || deletedText === '\n') return;
+
+  try {
+    // 注册自定义 Blot
+    const Quill = quillModule.value.default;
+    const Inline = Quill.import('blots/inline');
+
+    class DeletedContentBlot extends Inline {
+      static create(value) {
+        const node = super.create(value);
+        node.setAttribute('data-deleted', JSON.stringify(value));
+        node.style.textDecoration = 'line-through';
+        node.style.color = 'red';
+        node.style.opacity = '1';
+        // 插入操作按钮
+  
+        return node;
+      }
+
+      static value(node) {
+        return JSON.parse(node.getAttribute('data-deleted'));
+      }
+    }
+
+    DeletedContentBlot.blotName = 'deletedContent';
+    DeletedContentBlot.tagName = 'span';
+
+    Quill.register(DeletedContentBlot, true);
+
+    // 插入并格式化文本
+    quill.insertText(index, deletedText);
+    quill.formatText(index, deletedText.length, 'deletedContent', {
+      type: 'delete',
+      content: deletedText,
+      timestamp: Date.now(),
+      userId: userInfo.value.id,
+      hint: `删除：${deletedText}`
+    });
+
+    // Yjs 更新
+    if (ydoc && ytext) {
+      ydoc.transact(() => {
+        const binding = quill.getModule('y-quill');
+        if (binding) {
+          binding.ytext.delete(0, binding.ytext.length);
+          binding.ytext.insert(0, quill.root.innerHTML);
+        }
+      });
+    }
+  } catch (error) {
+    console.error('处理删除内容时出错:', error);
+  }
+};
+
+const handleStyleChange = (op, index) => {
+  const attributes = op.attributes;
+  const styleInfo = {
+    type: 'format',
+    attributes: attributes,
+    timestamp: Date.now(),
+    userId: userInfo.value.id,
+    hint: `设置格式：${Object.keys(attributes).join(', ')}`
+  };
+
+  quill.formatText(index, op.retain, {
+    'data-style': JSON.stringify(styleInfo),
+    ...attributes
+  });
+};
+
+const applyRevision = () => {
+  // 只处理修订Blot，不动评论Blot
+  const editor = quill.root;
+  // 处理新增内容
+  Array.from(editor.querySelectorAll('span[data-new]')).forEach(node => {
+    const value = JSON.parse(node.getAttribute('data-new'));
+    const index = quill.getIndex(node);
+    quill.deleteText(index, 1);
+    quill.insertText(index, value.content);
+  });
+  // 处理删除内容
+  Array.from(editor.querySelectorAll('span[data-deleted]')).forEach(node => {
+    const index = quill.getIndex(node);
+    quill.deleteText(index, 1);
+  });
+  setRevisionMode(false);
+};
+
+const cancelRevision = () => {
+  // 恢复原始文档状态
+  quill.setContents(oldDocumentState);
+  
+  // 重置修订模式
+  setRevisionMode(false);
+};
+
 // 在 initCollaborativeEditor 方法中添加
 const extractComments = () => {
   if (!quill) return;
@@ -1090,6 +1323,30 @@ onMounted(async () => {
 
   // 初始化编辑器
   await initCollaborativeEditor();
+
+  // 保存初始文档状态
+  oldDocumentState = quill.getContents();
+
+  // 事件委托：处理修订按钮点击
+  quill.root.addEventListener('click', (e) => {
+    if (e.target.classList.contains('revision-apply-btn')) {
+      handleApplyRevision(e.target.parentNode);
+    }
+    if (e.target.classList.contains('revision-reject-btn')) {
+      handleRejectRevision(e.target.parentNode);
+    }
+  });
+
+  // 清理非法的 span[data-comment]
+  const editor = quill.root;
+  Array.from(editor.querySelectorAll('span[data-comment]')).forEach(node => {
+    // 如果不是由 CommentBlot 生成，可以用 quill API 替换为纯文本
+    if (!node.classList.contains('ql-comment')) {
+      const index = quill.getIndex(node);
+      quill.deleteText(index, 1);
+      // 你可以选择插入 node.innerText 或什么都不插入
+    }
+  });
 });
 
 // 组件卸载时清理
@@ -1129,7 +1386,65 @@ defineExpose({
   usersInfo,
   insertCommentAtPosition,
   extractComments,
+  setRevisionMode,
 });
+
+function handleApplyRevision(node) {
+  // 判断是新增还是删除
+  if (node.hasAttribute('data-new')) {
+    // 新增内容：去掉Blot，保留纯文本
+    const value = JSON.parse(node.getAttribute('data-new'));
+    const index = quill.getIndex(node);
+    quill.deleteText(index, 1);
+    quill.insertText(index, value.content);
+  } else if (node.hasAttribute('data-deleted')) {
+    // 删除内容：直接移除
+    const index = quill.getIndex(node);
+    quill.deleteText(index, 1);
+  }
+}
+
+function handleRejectRevision(node) {
+  if (node.hasAttribute('data-new')) {
+    // 新增内容：直接删除
+    const index = quill.getIndex(node);
+    quill.deleteText(index, 1);
+  } else if (node.hasAttribute('data-deleted')) {
+    // 删除内容：恢复原文
+    const value = JSON.parse(node.getAttribute('data-deleted'));
+    const index = quill.getIndex(node);
+    quill.deleteText(index, 1);
+    quill.insertText(index, value.content);
+  }
+}
+
+// 补充所有修订内容的按钮
+function addRevisionButtons() {
+  const editor = quill.root;
+  // 新增内容
+  // editor.querySelectorAll('span[data-new]').forEach(node => {
+  //   if (!node.querySelector('.revision-apply-btn')) {
+  //     const applyBtn = document.createElement('button');
+  //     applyBtn.textContent = '应用';
+  //     applyBtn.className = 'revision-apply-btn';
+  //     const rejectBtn = document.createElement('button');
+  //     rejectBtn.textContent = '拒绝';
+  //     rejectBtn.className = 'revision-reject-btn';
+  //     node.appendChild(applyBtn);
+  //     node.appendChild(rejectBtn);
+  //   }
+  // });
+  // 删除内容
+
+}
+
+// 移除所有修订按钮
+function removeRevisionButtons() {
+  const editor = quill.root;
+  editor.querySelectorAll('.revision-apply-btn, .revision-reject-btn').forEach(btn => {
+    btn.remove();
+  });
+}
 </script>
 
 <template>
@@ -1185,6 +1500,10 @@ defineExpose({
       </div>
     </div>
     <div ref="quillEditor" class="editor"></div>
+    <div class="revision-controls" v-if="revisionMode">
+      <button @click="applyRevision">应用修订</button>
+      <button @click="cancelRevision">取消修订</button>
+    </div>
   </div>
 </template>
 
@@ -1295,4 +1614,50 @@ defineExpose({
   transform: scale(1);
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.15);
 }
+
+.revision-mode {
+  background-color: rgba(255, 165, 0, 0.05) !important;
+  transition: background-color 0.3s ease;
+}
+
+.revision-mode .ql-editor {
+  background-color: rgba(255, 165, 0, 0.05) !important;
+  border: 1px dashed rgba(255, 165, 0, 0.3);
+  border-radius: 8px;
+}
+
+.revision-controls {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.revision-mode .ql-editor .ql-newContent {
+  color: red !important;
+}
+
+/* 非修订模式下移除红色 */
+.ql-editor .ql-newContent {
+  color: inherit !important;
+}
+
+.revision-mode .ql-editor .ql-deletedContent {
+  text-decoration: line-through;
+  color: red;
+  opacity: 1;
+}
+
+.revision-apply-btn, .revision-reject-btn {
+  margin-left: 4px;
+  font-size: 10px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 3px;
+  background: #eee;
+  cursor: pointer;
+}
+.revision-apply-btn { color: green; }
+.revision-reject-btn { color: red; }
 </style>

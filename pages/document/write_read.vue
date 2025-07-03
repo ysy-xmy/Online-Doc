@@ -4,6 +4,7 @@
       v-model:documentName="documentName"
       :onlineUsers="onlineUsers"
       @save="saveDocument"
+      @toggleRevisionMode="handleRevisionModeToggle"
       ref="menuRef" />
 
     <!-- 文档编辑器 -->
@@ -69,6 +70,9 @@ const showSidebar = ref(false);
 const menuRef = ref(null);
 const yjsdemoRef = ref(null);
 
+// 添加修订模式状态
+const isRevisionMode = ref(false);
+
 // 模拟在线用户数据（后面连接）
 const onlineUsers = ref([
   {
@@ -121,6 +125,17 @@ const handleAddComment = (commentData) => {
       commentData.value = comment;
       showSidebar.value = true;
     }
+  }
+};
+
+// 处理修订模式切换
+const handleRevisionModeToggle = (mode) => {
+  isRevisionMode.value = mode;
+  
+  // 如果有 yjsdemo 组件，传递修订模式状态
+  if (yjsdemoRef.value) {
+    // 假设 yjsdemo 组件有一个方法来处理修订模式
+    yjsdemoRef.value.setRevisionMode(mode);
   }
 };
 

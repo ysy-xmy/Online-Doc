@@ -49,6 +49,7 @@
             <component 
               :is="activeTabComponent"
               :commentData ="commentData"
+              :commentAlldata = "commentAlldata"
               @addComment="handleAddComment"
               :key="activeTab"
             />
@@ -74,6 +75,10 @@ const props = defineProps({
   },
   commentData: {
     type: [Array, Object],
+    default:[]
+  },
+  commentAlldata:{
+    type:Array,
     default:[]
   }
 })

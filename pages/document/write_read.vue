@@ -17,12 +17,13 @@
     <Doc-DocumentSidebar
       v-model:show="showSidebar"
       :commentData="commentData"
+      :commentAlldata="commentAlldata"
       @addComment="handleAddComment"
       />
 
     <!-- 评论按钮 -->
     <button
-      @click="openSidebar"
+      @click="showAll"
       class="cursor-pointer absolute bottom-10 right-40 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 h-10 w-10 rounded-full flex items-center justify-center transition-colors duration-200">
       <img 
         class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" 
@@ -61,6 +62,7 @@ import { ref, provide } from 'vue'
 const route = useRoute();
 const documentId = route.params.id;
 const commentData = ref(null);
+const commentAlldata = ref(null)
 const documentContent = ref("");
 const documentName = ref("未命名文档");
 const showSidebar = ref(false);
@@ -93,16 +95,27 @@ const fetchDocumentContent = async () => {
 const openSidebar = (data) => {
   if (data) {
     commentData.value = data
+    commentAlldata.value= yjsdemoRef.value.extractComments()
+
   }
   showSidebar.value = true;
 };
+
+const showAll = ()=>{
+  if(yjsdemoRef.value){
+    commentAlldata.value= yjsdemoRef.value.extractComments()
+    commentData.value = null
+  }
+  showSidebar.value = true;
+
+} 
 
 // 处理添加评论的方法
 const handleAddComment = (commentData) => {
   if (yjsdemoRef.value) {
     // 直接传递 commentData，它已经包含了 hasSelectionId
     const comment = yjsdemoRef.value.insertCommentAtPosition(commentData);
-
+   
     if (comment) {
       // 更新评论数据并打开侧边栏
       commentData.value = comment;

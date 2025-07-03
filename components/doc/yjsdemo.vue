@@ -1001,8 +1001,8 @@ const insertCommentAtPosition = (commentData) => {
   const length = JSON.parse(existingCommentMark.getAttribute("data-comment"))
     .range.length;
 
-  // 删除原有的评论标记
-  quill.deleteText(index, length + 1);
+  // 仅删除评论标记，不删除后续文本
+  quill.deleteText(index, 1);
 
   // 重新插入带有更新后评论数据的标记
   const updatedCommentData = {
@@ -1032,6 +1032,54 @@ const insertCommentAtPosition = (commentData) => {
 
   return existingCommentData;
 };
+
+// 在 initCollaborativeEditor 方法中添加
+const extractComments = () => {
+  if (!quill) return;
+
+  // 获取编辑器的所有节点
+  const editorContent = quill.root;
+  const commentMarks = editorContent.querySelectorAll('[data-comment]');
+
+  const allComments = [];
+
+  commentMarks.forEach((mark) => {
+    try {
+      const commentData = JSON.parse(mark.getAttribute('data-comment'));
+      
+      // 打印每个评论的详细信息
+      console.log('评论详情:', {
+        selectionId: commentData.selectionId,
+        range: commentData.range,
+        selectedText: commentData.selectedText || '',
+        createTime: commentData.createTime,
+        color: commentData.color,
+        comments: commentData.comments.map(comment => ({
+          id: comment.id,
+          text: comment.text,
+          authorId: comment.authorId,
+          nickname: comment.nickname,
+          timestamp: comment.timestamp
+        }))
+      });
+
+      allComments.push(commentData);
+    } catch (error) {
+      console.error('解析评论时出错:', error);
+    }
+  });
+
+  console.log('文档中所有评论:', allComments);
+  return allComments;
+};
+
+// 在初始化编辑器后调用
+nextTick(() => {
+  // 延迟调用，确保编辑器完全加载
+  setTimeout(() => {
+    extractComments();
+  }, 1000);
+});
 
 // 组件挂载时初始化
 onMounted(async () => {
@@ -1080,6 +1128,7 @@ defineExpose({
   getCurrentUserInfo,
   usersInfo,
   insertCommentAtPosition,
+  extractComments,
 });
 </script>
 

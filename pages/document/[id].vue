@@ -13,7 +13,6 @@
 import { ref, shallowRef, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
-import { collaborationApi } from "~/api/collaborators";
 import WriteRead from "./write_read.vue";
 import ReadOnlyViewer from "./ReadOnlyViewer.vue";
 

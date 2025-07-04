@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-base-100 p-4">
+  <div class="bg-base-100 p-4 h-full flex flex-col">
     <!-- 错误提示 -->
     <div v-if="workspaceStore.error || documentStore.error" class="alert alert-error mb-4">
       <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -53,17 +53,17 @@
     </div>
 
     <!-- 文档列表 -->
-    <div v-else-if="documentStore.documents.length > 0" class="overflow-x-auto">
-      <table class="table table-zebra">
+    <div v-else-if="documentStore.documents.length > 0" class="overflow-x-hidden flex-1 h-0">
+      <table class="table table-zebra table-pin-rows">
         <thead>
           <tr>
-            <th>文档名称</th>
-            <th>类型</th>
-            <th>状态</th>
-            <th>创建人</th>
-            <th>最后修改</th>
-            <th>更新时间</th>
-            <th>操作</th>
+            <th class="min-w-36 overflow-ellipsis">文档名称</th>
+            <th class="min-w-28">类型</th>
+            <th class="min-w-16">状态</th>
+            <th class="min-w-32">创建人</th>
+            <th class="min-w-40">最后修改</th>
+            <th class="min-w-28">更新时间</th>
+            <th class="min-w-40">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -85,7 +85,7 @@
               </div>
             </td>
             <td>
-              <div class="badge badge-sm" :class="{
+              <div class="badge badge-sm whitespace-nowrap" :class="{
                 'badge-success': doc.status === 'PUBLISHED',
                 'badge-warning': doc.status === 'DRAFT',
                 'badge-error': doc.status === 'ARCHIVED'
@@ -120,13 +120,13 @@
             <td>
               <div class="flex space-x-1">
                 <button
-                  class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                  class="btn btn-ghost btn-xs group-hover:opacity-100 transition-opacity"
                   @click.stop="openDocument(doc.id)"
                 >
                   查看
                 </button>
                 <button
-                  class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity text-error"
+                  class="btn btn-ghost btn-xs group-hover:opacity-100 transition-opacity text-error"
                   @click.stop="deleteDocument(doc.id)"
                 >
                   删除

@@ -64,12 +64,26 @@ export const useDashboardStore = defineStore('dashboard', {
 
         const response = await dashboardApi.getUserDashboard()
         
-        if (response.code === 'SUCCESS') {
-          this.userDashboard = response.data
+        if (response.code === 'SUCCESS' && response.data) {
+          // 确保数据存在且有效
+          this.userDashboard = {
+            recentDocuments: response.data.recentDocuments || [],
+            // 其他字段...
+          }
         } else {
+          // 如果没有数据，设置空数组
+          this.userDashboard = {
+            recentDocuments: [],
+            // 其他字段的默认值...
+          }
           throw new Error(response.message || '获取仪表板数据失败')
         }
       } catch (error) {
+        // 设置空数组，防止渲染错误
+        this.userDashboard = {
+          recentDocuments: [],
+          // 其他字段的默认值...
+        }
         this.setError(error instanceof Error ? error.message : '获取仪表板数据失败')
       } finally {
         this.setLoading(false)

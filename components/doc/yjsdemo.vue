@@ -19,7 +19,7 @@ const props = defineProps({
     default: false,
   },
 });
-
+console.log("value:", props.isReadOnly);
 // 响应式变量
 const quillEditor = ref(null);
 const floatingToolbar = ref(null);
@@ -103,7 +103,7 @@ const autoSave = () => {
   debouncedRestoreSaveStatus();
 };
 
-// 渲染远程光标和选区的函数
+// 渲染远程光标的函数
 const renderRemoteCursors = () => {
   if (!isClient || !quill || !websocketModule.value) return;
 
@@ -128,14 +128,16 @@ const renderRemoteCursors = () => {
   const users = Array.from(allStates.entries()).filter(
     ([clientID, state]) =>
       state.user &&
-      // 排除当前用户
+      state.user.cursorPosition !== undefined &&
+      state.user.cursorPosition !== null &&
+      // 排除当前用户的光标
       state.user.id !== userInfo.value.id
   );
 
   users.forEach(([clientID, state]) => {
-    // 如果已经有该用户的状态，只保留最后一个
-    if (!userStateMap.has(state.user.id)) {
-      userStateMap.set(state.user.id, { clientID, state });
+    // 如果已经有该用户的光标，只保留最后一个
+    if (!userCursorMap.has(state.user.id)) {
+      userCursorMap.set(state.user.id, { clientID, state });
     }
   });
 
@@ -237,7 +239,7 @@ const renderRemoteCursors = () => {
         editorContainer.appendChild(selectionElement);
       }
     } catch (error) {
-      console.error("渲染光标和选区时出错:", error, "用户状态:", state);
+      console.error("渲染光标时出错:", error, "用户状态:", state);
     }
   });
 };
@@ -333,7 +335,6 @@ const initCollaborativeEditor = async () => {
     static create(value) {
       let node = super.create(value);
 
-      // 处理不同类型的输入
       let commentData = null;
       if (typeof value === "object") {
         // 如果是完整的对象，包括 node 属性
@@ -365,17 +366,24 @@ const initCollaborativeEditor = async () => {
         const existingCommentData = JSON.parse(
           existingCommentMark.getAttribute("data-comment")
         );
+
+        // 合并评论，去重
         const mergedComments = [
           ...existingCommentData.comments,
           ...commentData.comments,
-        ];
+        ].filter(
+          (comment, index, self) =>
+            index ===
+            self.findIndex(
+              (t) => t.id === comment.id && t.text === comment.text
+            )
+        );
 
         commentData = {
           ...existingCommentData,
           comments: mergedComments,
         };
 
-        // 使用现有的节点，而不是重新赋值
         node = existingCommentMark;
       }
 
@@ -429,6 +437,21 @@ const initCollaborativeEditor = async () => {
       node.style.display = "inline-block";
       node.style.paddingRight = "4px";
 
+      // 触发 Yjs 更新
+      try {
+        if (ydoc && ytext) {
+          ydoc.transact(() => {
+            const binding = quill.getModule("y-quill");
+            if (binding) {
+              binding.ytext.delete(0, binding.ytext.length);
+              binding.ytext.insert(0, quill.root.innerHTML);
+            }
+          });
+        }
+      } catch (error) {
+        console.error("CommentBlot 更新时出错:", error);
+      }
+
       return node;
     }
 
@@ -459,7 +482,12 @@ const initCollaborativeEditor = async () => {
   CommentBlot.blotName = "comment";
   CommentBlot.tagName = "span";
 
-  Quill.register(CommentBlot);
+  Quill.register(
+    {
+      "blots/comment": CommentBlot,
+    },
+    true
+  );
 
   // 确定占位文本
   let placeholderText = "开始协同编辑...";
@@ -480,8 +508,12 @@ const initCollaborativeEditor = async () => {
         maxStack: 500,
         userOnly: true,
       },
+      "y-quill": {
+        ytext: ytext,
+        awareness: awareness,
+      },
     },
-    readOnly: props.isReadOnly, // 关键！Quill原生只读模式
+    readOnly: props.isReadOnly,
     placeholder: placeholderText,
   });
 
@@ -996,7 +1028,7 @@ const handleKeyboardEvent = (event) => {
 
 // 定位工具栏
 const positionToolbar = (range) => {
-  if (!quill || !floatingToolbar.value) return;
+  if (!quill || !floatingToolbar.value || props.isReadOnly) return;
 
   try {
     const bounds = quill.getBounds(range.index, range.length);
@@ -1049,7 +1081,6 @@ const addComment = () => {
     alert("文档处于只读模式，无法添加评论");
     return;
   }
-
   const selection = quill.getSelection();
 
   // 如果没有选择，提示用户
@@ -1095,6 +1126,7 @@ const addComment = () => {
       index: selection.index,
       length: selection.length,
     },
+    selectedText: selectedText,
     index: selection.index,
     color: localUser.value.color,
     createTime: new Date().toLocaleString().replace(/\//g, "/"),
@@ -1119,7 +1151,7 @@ const addComment = () => {
 
 // 插入评论的方法（支持外部调用）
 const insertCommentAtPosition = (commentData) => {
-  if (!quill || !awareness) return null;
+  if (!quill || !awareness || !ytext) return null;
 
   // 获取现有的评论标记
   const existingCommentMark = quill.root.querySelector(
@@ -1138,27 +1170,102 @@ const insertCommentAtPosition = (commentData) => {
 
   // 准备新的评论
   const newComment = {
-    id: Date.now(), // 生成唯一ID
+    id: Date.now(),
     text: commentData.newComment.text,
-    author: "当前用户",
+    authorId: userInfo.value?.id,
+    nickname: userInfo.value?.nickname || "匿名用户",
+    avatar: userInfo.value?.avatar || "默认头像地址",
+    color: userInfo.value?.color || `hsl(${Math.random() * 360}, 70%, 50%)`,
     timestamp: new Date().toLocaleString().replace(/\//g, "/"),
   };
 
   // 更新现有评论数据
   existingCommentData.comments.push(newComment);
 
-  // 更新 data-comment 属性
-  existingCommentMark.setAttribute(
-    "data-comment",
-    JSON.stringify(existingCommentData)
-  );
+  // 获取评论标记的位置和长度
+  const index = parseInt(existingCommentMark.getAttribute("data-index"), 10);
+  const length = JSON.parse(existingCommentMark.getAttribute("data-comment"))
+    .range.length;
 
-  // 打开侧边评论面板
-  emits("openCommentPanel", existingCommentData);
-  currentComment.value = existingCommentData;
+  // 仅删除评论标记，不删除后续文本
+  quill.deleteText(index, 1);
+
+  // 重新插入带有更新后评论数据的标记
+  const updatedCommentData = {
+    ...existingCommentData,
+    range: { index, length },
+  };
+
+  // 在原位置重新插入评论标记
+  quill.insertEmbed(index, "comment", updatedCommentData);
+
+  // 显式触发 Yjs 更新
+  try {
+    ydoc.transact(() => {
+      const binding = quill.getModule("y-quill");
+      if (binding) {
+        binding.ytext.delete(0, binding.ytext.length);
+        binding.ytext.insert(0, quill.root.innerHTML);
+      }
+    });
+
+    // 打开侧边评论面板
+    emits("openCommentPanel", existingCommentData);
+    currentComment.value = existingCommentData;
+  } catch (error) {
+    console.error("触发 Yjs 更新时出错:", error);
+  }
 
   return existingCommentData;
 };
+
+// 在 initCollaborativeEditor 方法中添加
+const extractComments = () => {
+  if (!quill) return;
+
+  // 获取编辑器的所有节点
+  const editorContent = quill.root;
+  const commentMarks = editorContent.querySelectorAll('[data-comment]');
+
+  const allComments = [];
+
+  commentMarks.forEach((mark) => {
+    try {
+      const commentData = JSON.parse(mark.getAttribute('data-comment'));
+      
+      // 打印每个评论的详细信息
+      console.log('评论详情:', {
+        selectionId: commentData.selectionId,
+        range: commentData.range,
+        selectedText: commentData.selectedText || '',
+        createTime: commentData.createTime,
+        color: commentData.color,
+        comments: commentData.comments.map(comment => ({
+          id: comment.id,
+          text: comment.text,
+          authorId: comment.authorId,
+          nickname: comment.nickname,
+          timestamp: comment.timestamp
+        }))
+      });
+
+      allComments.push(commentData);
+    } catch (error) {
+      console.error('解析评论时出错:', error);
+    }
+  });
+
+  console.log('文档中所有评论:', allComments);
+  return allComments;
+};
+
+// 在初始化编辑器后调用
+nextTick(() => {
+  // 延迟调用，确保编辑器完全加载
+  setTimeout(() => {
+    extractComments();
+  }, 1000);
+});
 
 // 组件挂载时初始化
 onMounted(async () => {
@@ -1213,6 +1320,7 @@ defineExpose({
   getCurrentUserInfo,
   usersInfo,
   insertCommentAtPosition,
+  extractComments,
 });
 </script>
 

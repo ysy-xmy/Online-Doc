@@ -102,6 +102,55 @@ const registerDeletedContentBlot = () => {
   deletedBlotRegistered = true;
 };
 
+let newContentBlotRegistered = false;
+const registerNewContentBlot = () => {
+  if (newContentBlotRegistered) return;
+  const Quill = quillModule.value?.default;
+  if (!Quill) return;
+  const Inline = Quill.import('blots/inline');
+  class NewContentBlot extends Inline {
+    static create(value) {
+      const node = super.create(value);
+      
+      // 确保数据结构完整
+      const newContentData = {
+        type: 'add',
+        content: value.content || '',
+        timestamp: value.timestamp || Date.now(),
+        userId: value.userId || userInfo.value.id,
+        hint: value.hint || '新增内容'
+      };
+      
+      // 同时使用 setAttribute 和 dataset
+      node.setAttribute('data-new', JSON.stringify(newContentData));
+      node.dataset.new = JSON.stringify(newContentData);
+      
+      // 样式设置
+      node.style.color = 'red';
+      node.style.textDecoration = 'none';
+      
+      return node;
+    }
+
+    static value(node) {
+      // 尝试从多个来源读取数据
+      try {
+        return JSON.parse(
+          node.getAttribute('data-new') || 
+          node.dataset.new
+        );
+      } catch (error) {
+        console.error('解析新增内容失败:', error);
+        return null;
+      }
+    }
+  }
+  NewContentBlot.blotName = 'newContent';
+  NewContentBlot.tagName = 's';
+  Quill.register(NewContentBlot, true);
+  newContentBlotRegistered = true;
+};
+
 // 异步加载依赖
 const loadDependencies = async () => {
   if (!isClient) return;
@@ -1253,25 +1302,10 @@ const handleAddition = (op, index) => {
   const Quill = quillModule.value.default;
   const Inline = Quill.import('blots/inline');
 
-  // 检查当前位置是否已经有 data-new
-  const [leaf, offset] = quill.getLeaf(index);
-  if (leaf && leaf.parent && leaf.parent.domNode && leaf.parent.domNode.hasAttribute('data-new')) {
-    const node = leaf.parent.domNode;
-    let data = JSON.parse(node.getAttribute('data-new'));
-    // 获取当前节点的全部文本内容
-    const newContent = node.innerText || node.textContent;
-    data.content = newContent;
-    data.timestamp = Date.now();
-    data.hint = `新增：${newContent}`;
-    node.setAttribute('data-new', JSON.stringify(data));
-    return;
-  }
-
   class NewContentBlot extends Inline {
     static create(value) {
       const node = super.create(value);
 
-      // 始终用最新的信息覆盖
       const newContentData = {
         type: 'add',
         content: value.content || value,
@@ -1279,30 +1313,31 @@ const handleAddition = (op, index) => {
         userId: userInfo.value.id,
         hint: `新增：${value.content || value}`
       };
+      
+      // 使用 setAttribute 和 dataset 同时设置
       node.setAttribute('data-new', JSON.stringify(newContentData));
+      node.dataset.new = JSON.stringify(newContentData);
+      
       node.style.color = 'red';
       node.style.textDecoration = 'none';
 
-      // // 插入操作按钮
-      // if (revisionMode.value) {
-      //   const applyBtn = document.createElement('button');
-      //   applyBtn.textContent = '应用';
-      //   applyBtn.className = 'revision-apply-btn';
-      //   const rejectBtn = document.createElement('button');
-      //   rejectBtn.textContent = '拒绝';
-      //   rejectBtn.className = 'revision-reject-btn';
-      //   node.appendChild(applyBtn);
-      //   node.appendChild(rejectBtn);
-      // }
       return node;
     }
+
     static value(node) {
-      const newContentData = node.getAttribute('data-new');
-      return newContentData ? JSON.parse(newContentData) : null;
+      try {
+        return JSON.parse(
+          node.getAttribute('data-new') || 
+          node.dataset.new
+        );
+      } catch (error) {
+        console.error('解析新增内容失败:', error);
+        return null;
+      }
     }
   }
   NewContentBlot.blotName = 'newContent';
-  NewContentBlot.tagName = 'span';
+  NewContentBlot.tagName = 's';
   Quill.register(NewContentBlot, true);
 
   // 只包裹没有 data-new 的内容
@@ -1313,23 +1348,36 @@ const handleAddition = (op, index) => {
     userId: userInfo.value.id,
     hint: `新增：${content}`
   });
+
+  // 获取最新的新增节点并触发同步
+  const editor = quill.root;
+  const allSpans = Array.from(editor.querySelectorAll('[data-new]'));
+  let found = null;
+  for (const span of allSpans) {
+    const blot = Quill.find(span);
+    if (!blot) continue;
+    const spanIndex = quill.getIndex(blot);
+    if (spanIndex === index) {
+      found = span;
+      break;
+    }
+  }
+
+      // 触发 Yjs 更新
+      try {
+      const delta = quill.getContents();
+      ydoc.transact(() => {
+        const binding = quill.getModule("y-quill");
+        if (binding) {
+          binding.ytext.delete(0, binding.ytext.length);
+          binding.ytext.insert(0, delta);
+        }
+      });
+    } catch (error) {
+      console.error("同步 Delta 时出错:", error);
+    }
 };
 
-const handleStyleChange = (op, index) => {
-  const attributes = op.attributes;
-  const styleInfo = {
-    type: 'format',
-    attributes: attributes,
-    timestamp: Date.now(),
-    userId: userInfo.value.id,
-    hint: `设置格式：${Object.keys(attributes).join(', ')}`
-  };
-
-  quill.formatText(index, op.retain, {
-    'data-style': JSON.stringify(styleInfo),
-    ...attributes
-  });
-};
 
 const applyRevision = () => {
   // 只处理修订Blot，不动评论Blot
@@ -1413,6 +1461,7 @@ onMounted(async () => {
   // 先加载依赖
   await loadDependencies();
   registerDeletedContentBlot();
+  registerNewContentBlot();
 
   // 初始化编辑器
   await initCollaborativeEditor();
@@ -1484,12 +1533,20 @@ function handleRejectRevision(node) {
   const length = blot.length();
 
   if (node.getAttribute('data-new') !== null) {
+    // 对于新增内容，直接删除
     quill.deleteText(index, length);
   } else if (node.getAttribute('data-deleted') !== null) {
-    const value = JSON.parse(node.getAttribute('data-deleted'));
+    const value = JSON.parse(
+      node.getAttribute('data-deleted') || 
+      node.dataset.deleted
+    );
     const text = value.content;
+    
+    // 删除删除标记
     quill.deleteText(index, length);
-    quill.insertText(index, text);
+    
+    // 插入原始文本
+    quill.insertText(index, text, 'user');
   }
 }
 

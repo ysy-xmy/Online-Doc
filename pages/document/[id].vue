@@ -3,8 +3,11 @@
     <!-- 文档信息菜单 -->
     <Doc-Menu
       v-model:documentName="documentName"
+      :documentId="documentId"
+      :documentStatus="documentStatus"
       :onlineUsers="onlineUsers"
       @save="saveDocument"
+      @statusChanged="handleStatusChanged"
       ref="menuRef" />
 
     <!-- 文档编辑器 -->
@@ -64,31 +67,25 @@ const documentId = route.params.id;
 const commentData = ref(null);
 const documentContent = ref("");
 const documentName = ref("未命名文档");
+const documentStatus = ref("DRAFT");
 const showSidebar = ref(false);
 const menuRef = ref(null);
 const yjsdemoRef = ref(null);
 
-// 模拟在线用户数据（后面连接）
-const onlineUsers = ref([
-  {
-    id: 1,
-    name: "用户A",
-    color: "#007bff",
-    isLocal: true,
-  },
-  {
-    id: 2,
-    name: "用户B",
-    color: "#28a745",
-    isLocal: false,
-  },
-]);
+// 在线用户数据 - 从协同编辑组件获取
+const onlineUsers = ref([]);
 
-// 模拟获取文档内容的方法
+// 获取文档内容的方法
 const fetchDocumentContent = async () => {
-  // 在实际应用中，这里应该是从后端获取文档内容
-  documentContent.value = `这是文档 ${documentId} 的内容`;
-  documentName.value = `文档 ${documentId}`;
+  try {
+    // TODO: 从后端API获取文档内容
+    // const response = await documentApi.getById(documentId)
+    // documentContent.value = response.data.content
+    // documentName.value = response.data.title
+    console.log('获取文档内容:', documentId)
+  } catch (error) {
+    console.error('获取文档内容失败:', error)
+  }
 };
 
 const openSidebar = (data) => {
@@ -110,6 +107,12 @@ const handleAddComment = (commentData) => {
       showSidebar.value = true;
     }
   }
+};
+
+// 处理文档状态变化
+const handleStatusChanged = (newStatus) => {
+  documentStatus.value = newStatus;
+  console.log('文档状态已更新:', newStatus);
 };
 
 onMounted(() => {

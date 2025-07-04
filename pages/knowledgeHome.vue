@@ -239,21 +239,38 @@
             />
           </div>
           <div class="mb-4">
+            <label class="block text-base-content font-semibold mb-1">选择知识库 <span class="text-red-500">*</span></label>
+            <select
+              v-model="docForm.workspaceId"
+              required
+              class="select select-bordered w-full bg-base-100"
+            >
+              <option value="">请选择知识库</option>
+              <option
+                v-for="workspace in workspaceStore.workspaces"
+                :key="workspace.id"
+                :value="workspace.id"
+              >
+                {{ workspace.icon || '📁' }} {{ workspace.name }}
+              </option>
+            </select>
+          </div>
+          <div class="mb-4">
             <label class="block text-base-content font-semibold mb-1">内容</label>
-            <textarea 
-              v-model="docForm.content" 
-              maxlength="1000" 
-              placeholder="请输入文档内容（可选）" 
+            <textarea
+              v-model="docForm.content"
+              maxlength="1000"
+              placeholder="请输入文档内容（可选）"
               class="textarea textarea-bordered w-full bg-base-100"
               rows="5"
             />
           </div>
           <div class="flex justify-end space-x-4">
             <button type="button" class="btn btn-ghost" @click="onCancelDoc">取消</button>
-            <button 
-              type="submit" 
-              class="btn btn-primary" 
-              :disabled="!docForm.title"
+            <button
+              type="submit"
+              class="btn btn-primary"
+              :disabled="!docForm.title || !docForm.workspaceId"
             >
               创建
             </button>

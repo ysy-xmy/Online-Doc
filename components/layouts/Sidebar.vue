@@ -43,13 +43,11 @@
         <!-- 知识库二级菜单 -->
         <ul v-if="isKnowledgeBaseExpanded" class="menu-sub pl-4 space-y-1">
           <li v-for="menu in knowledgeBaseMenus" :key="menu.path">
-            <button 
+            <button
               class="flex items-center w-full px-3 py-2 rounded-lg text-base-content hover:bg-primary/10 transition font-medium"
               @click="navigateToKnowledgeBasePage(menu.path, menu.name)"
             >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
-          </svg>
+              <span class="text-lg mr-2">{{ menu.icon || '📁' }}</span>
               {{ menu.name }}
             </button>
           </li>
@@ -60,31 +58,26 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useWorkspaceStore } from '@/stores/workspace'
 
 const router = useRouter()
 const route = useRoute()
 
-// 知识库二级菜单配置
-const knowledgeBaseMenus = [
-  { 
-    name: '测试', 
-    path: '/knowledgeBase/0',
-  },
-  { 
-    name: '产品手册', 
-    path: '/knowledgeBase/product-manual',
-  },
-  { 
-    name: '常见问题', 
-    path: '/knowledgeBase/faq',
-  }
-]
+// 知识库二级菜单配置 - 从store获取真实数据
+const workspaceStore = useWorkspaceStore()
+const knowledgeBaseMenus = computed(() => {
+  return workspaceStore.workspaces.map(workspace => ({
+    name: workspace.name,
+    path: `/knowledgeBase/${workspace.id}`,
+    icon: workspace.icon
+  }))
+})
 
 // 响应式页面标题和展开状态
 const currentPageTitle = ref('主页')
-const isKnowledgeBaseExpanded = ref(true)
+const isKnowledgeBaseExpanded = ref(false)
 
 // 更新页面标题的方法
 const updatePageTitle = (title) => {
@@ -114,21 +107,34 @@ watch(() => route.path, (newPath) => {
   switch(newPath) {
     case '/':
       updatePageTitle('主页')
+      isKnowledgeBaseExpanded.value = false
       break
-    case '/knowledgeBase':
+    case '/knowledgeHome':
       updatePageTitle('知识库')
+      isKnowledgeBaseExpanded.value = true
       break
     default:
       // 检查是否为知识库子页面
-      const knowledgeBasePage = knowledgeBaseMenus.find(menu => menu.path === newPath)
-      if (knowledgeBasePage) {
-        updatePageTitle(knowledgeBasePage.name)
+      if (newPath.startsWith('/knowledgeBase/')) {
+        const workspaceId = newPath.split('/')[2]
+        const workspace = workspaceStore.workspaces.find(w => w.id.toString() === workspaceId)
+        if (workspace) {
+          updatePageTitle(workspace.name)
+        } else {
+          updatePageTitle('知识库详情')
+        }
         isKnowledgeBaseExpanded.value = true
       } else {
         updatePageTitle('主页')
+        isKnowledgeBaseExpanded.value = false
       }
   }
 }, { immediate: true })
+
+// 组件挂载时获取知识库数据
+onMounted(async () => {
+  await workspaceStore.fetchWorkspaces({ refresh: true })
+})
 </script>
 
 <style scoped>

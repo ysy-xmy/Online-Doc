@@ -77,7 +77,7 @@
             <button class="btn btn-primary btn-sm" @click="navigateTo('/knowledgeHome')">
               新建知识库
             </button>
-            <button class="btn btn-secondary btn-sm" @click="showCreateDocModal = true">
+            <button class="btn btn-secondary btn-sm" @click="navigateTo('/knowledgeHome')">
               新建文档
             </button>
           </div>
@@ -233,7 +233,6 @@ const workspaceStore = useWorkspaceStore()
 const documentStore = useDocumentStore()
 
 const searchKeyword = ref('')
-const showCreateDocModal = ref(false)
 
 // 页面初始化
 onMounted(async () => {

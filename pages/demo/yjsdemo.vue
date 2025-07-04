@@ -159,9 +159,12 @@ const initCollaborativeEditor = async () => {
     ytext = ydoc.getText("text");
 
     // 配置 WebSocket 提供者
+    // 使用动态房间名称
+    const roomName = `demo-room-${Date.now()}`;
+    const wsUrl = `ws://8.134.200.53:1234?room=${roomName}`;
+    
     provider = new websocketModule.value.WebsocketProvider(
-        "ws://8.134.200.53:1234",
-        "my-roomname",
+        wsUrl,
         ydoc,
         {
             reconnect: true,

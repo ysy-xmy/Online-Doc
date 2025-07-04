@@ -94,7 +94,6 @@ const updateOnlineUsers = () => {
 
 // 异步加载依赖
 const loadDependencies = async () => {
-
     try {
         // 动态导入依赖
         quillModule.value = await import("quill");
@@ -181,7 +180,6 @@ const debouncedRenderRemoteCursors = debounce(renderRemoteCursors, 50);
 
 // 初始化编辑器和协同功能
 const initCollaborativeEditor = async () => {
-
     // 确保所有依赖已加载
     if (
         !quillModule.value ||
@@ -217,19 +215,18 @@ const initCollaborativeEditor = async () => {
     ytext = ydoc.getText("text");
 
     // 配置 WebSocket 提供者
-    provider = new websocketModule.value.WebsocketProvider(
-        "ws://8.134.200.53:1234",
-        "my-roomname",
-        ydoc,
-        {
-            reconnect: true,
-            reconnectTimeout: 5000,
-            maxBackoff: 30000,
-            params: {
-                username: `用户_${Math.random().toString(36).substr(2, 9)}`,
-            },
-        }
-    );
+    // 使用动态房间名称
+    const roomName = `test-room-${Date.now()}`;
+    const wsUrl = `ws://8.134.200.53:1234?room=${roomName}`;
+
+    provider = new websocketModule.value.WebsocketProvider(wsUrl, ydoc, {
+        reconnect: true,
+        reconnectTimeout: 5000,
+        maxBackoff: 30000,
+        params: {
+            username: `用户_${Math.random().toString(36).substr(2, 9)}`,
+        },
+    });
 
     // 监听 Yjs 文本变更
     ytext.observe((event) => {
@@ -358,7 +355,6 @@ const initCollaborativeEditor = async () => {
 
 // 组件挂载时初始化
 onMounted(async () => {
-
     // 先加载依赖
     await loadDependencies();
 

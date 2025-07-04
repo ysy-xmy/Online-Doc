@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
 import { useDocumentStore } from "@/stores/document";
 import _ from "lodash";
+import { useRoute } from "vue-router";
 
 import "highlight.js/styles/atom-one-dark.min.css";
 import hljs from "highlight.js/lib/common";
@@ -9,6 +10,7 @@ import { useUserStore } from "@/stores/user";
 import { useDocumentStore as useDocStore } from "@/stores/document";
 const userStore = useUserStore();
 const userInfo = computed(() => userStore.userInfo);
+const route = useRoute();
 
 // 响应式变量
 const quillEditor = ref(null);
@@ -26,6 +28,14 @@ const localUser = ref({
     timestamp: Date.now(),
     cursorPosition: null,
     cursorLength: 0,
+});
+
+// 房间信息
+const roomInfo = ref({
+    roomName: "",
+    activeUsers: 0,
+    lastUpdate: null,
+    hasDocument: false,
 });
 
 // 添加 userSelectionRange 变量
@@ -532,17 +542,32 @@ const initCollaborativeEditor = async () => {
     ytext = ydoc.getText("text");
 
     // 配置 WebSocket 提供者（发起请求）
+    // 使用路由ID作为房间名称，确保房间隔离
+    const roomName = route.params.id || "default-room";
+
+    // 验证房间名格式
+    if (!/^[a-zA-Z0-9_-]+$/.test(roomName)) {
+        console.error("无效的房间名:", roomName);
+        alert("无效的房间名");
+        return;
+    }
+
+
     provider = new websocketModule.value.WebsocketProvider(
-        "ws://8.134.200.53:1234",
         // "ws://8.134.200.53:1234",
-        "my-roomname",
+        "ws://8.134.200.53:8080",
+        // "ws://localhost:1234",
+        roomName,
         ydoc,
         {
             reconnect: true,
             reconnectTimeout: 5000,
             maxBackoff: 30000,
             params: {
-                username: `用户_${Math.random().toString(36).substr(2, 9)}`,
+                username:
+                    localUser.value.name ||
+                    `用户_${Math.random().toString(36).substr(2, 9)}`,
+                room: roomName, // 明确传递房间名
             },
         }
     );
@@ -779,6 +804,7 @@ const initCollaborativeEditor = async () => {
 
     // 监听连接建立
     provider.on("connect", () => {
+        console.log(`已连接到房间: ${roomName}`);
         // 设置本地用户状态
         if (awareness) {
             awareness.setLocalStateField("user", {
@@ -793,22 +819,52 @@ const initCollaborativeEditor = async () => {
             });
 
             // 获取并显示当前用户信息
-            setTimeout(() => {
-                const username = usersInfo.name;
-                const clientID = usersInfo.clientID;
-                console.log("连接建立后 - 当前用户名:", username);
-                console.log("连接建立后 - 当前客户端ID:", clientID);
-            }, 1000);
+            // setTimeout(() => {
+            //     const username = usersInfo.name;
+            //     const clientID = usersInfo.clientID;
+            //     // console.log("连接建立后 - 当前用户名:", username);
+            //     // console.log("连接建立后 - 当前客户端ID:", clientID);
+            //     // console.log("当前房间:", roomName);
+            // }, 1000);
         }
     });
 
     // 监听连接断开
     provider.on("disconnect", () => {
-        console.log("🔗 WebSocket 连接已断开");
+        console.log(`🔗 WebSocket 连接已断开 (房间: ${roomName})`);
     });
-    // 监听连接断开
+
+    // 监听 WebSocket 消息
     provider.on("message", (event) => {
-        console.log("🔗 WebSocket 消息:", event);
+        console.log(`🔗 WebSocket 消息 (房间: ${roomName}):`, event);
+
+        // 处理房间信息更新
+        if (event.data && typeof event.data === "string") {
+            try {
+                const message = JSON.parse(event.data);
+                if (
+                    message.type === "roomInfo" ||
+                    message.type === "roomStatus"
+                ) {
+                    roomInfo.value = message.data;
+                    console.log("房间信息更新:", roomInfo.value);
+                }
+            } catch (error) {
+                // 忽略非JSON消息
+            }
+        }
+    });
+
+    // 监听房间状态变化
+    provider.on("status", (event) => {
+        console.log(`🔗 连接状态变化 (房间: ${roomName}):`, event);
+
+        // 根据连接状态更新文档状态
+        if (event.status === "connected") {
+            documentInfo.saveStatus = "已连接";
+        } else if (event.status === "disconnected") {
+            documentInfo.saveStatus = "连接断开";
+        }
     });
 
     // 添加编辑器滚动监听器

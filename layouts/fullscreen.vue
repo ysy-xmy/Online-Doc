@@ -7,7 +7,7 @@
             <h2
                 class="text-lg font-bold mb-4 border-b border-base-content/10 pb-2"
             >
-                {{ workspaceName }}知识库
+               知识库：{{ workspaceName }}
             </h2>
             <nav>
                 <ul class="menu w-full ml-2">
@@ -139,12 +139,7 @@ const workspaceStore = useWorkspaceStore();
 const documents = ref([]);
 
 // 获取知识库名称
-const workspaceName = computed(() => {
-    if (documents.length > 0 && documents[0].workspace) {
-        return documents[0].workspace.name;
-    }
-    return "知识库";
-});
+const workspaceName = workspaceStore.currentWorkspace.name
 
 //打印知识库对应的文档列表
 // console.log("知识库对应的文档列表:", documents);

@@ -118,45 +118,37 @@ const saveHistoricalVersion = async () => {
     const documentId = route.params.id;
     const content = getEditorContent(); // 获取编辑器内容
     const contentJson = JSON.stringify(quill.getContents()); // 获取编辑器内容的 JSON 格式
-
-    // 打印请求内容用于调试
-    console.log('准备发送的请求内容:', {
+    // 打印原始数据
+    console.log('获取的数据:', {
       documentId,
       content,
       contentJson
     });
-
+    // 构建请求体
+    const requestBody = JSON.stringify({ content, contentJson });
+    console.log('实际发送的请求体:', requestBody);
     // 构造API URL
     const apiUrl = `http://8.134.200.53:8080/api/documents/${documentId}/versions/auto-save`;
-
     // 从cookie中获取token
     const tokenCookie = useCookie('token');
     const token = tokenCookie.value;
-
     const headers = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       'Content-Type': 'application/json'
     };
-
+    console.log("headers:", headers);
     const { data, error } = await useFetch(apiUrl, {
       headers,
       method: 'POST',
-      body: {
-        content,
-        contentJson
-      }
+      body: requestBody
     });
-
     if (error.value) {
       throw new Error(error.value.message || '自动保存版本失败');
     }
-
     if (!data.value || !data.value.success) {
       throw new Error('接口返回数据格式不正确');
     }
-
     console.log('自动保存版本成功:', data.value);
-
     // 保存成功后更新上次保存时间
     lastSaveTime.value = Date.now();
     return data.value;

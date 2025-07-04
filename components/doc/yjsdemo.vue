@@ -377,11 +377,12 @@ const initCollaborativeEditor = async () => {
       // 触发 Yjs 更新
       try {
         if (ydoc && ytext) {
+          const delta = quill.getContents();
           ydoc.transact(() => {
             const binding = quill.getModule("y-quill");
             if (binding) {
               binding.ytext.delete(0, binding.ytext.length);
-              binding.ytext.insert(0, quill.root.innerHTML);
+              binding.ytext.insert(0, delta);
             }
           });
         }
@@ -1055,11 +1056,12 @@ const insertCommentAtPosition = (commentData) => {
 
   // 显式触发 Yjs 更新
   try {
+    const delta = quill.getContents();
     ydoc.transact(() => {
       const binding = quill.getModule("y-quill");
       if (binding) {
         binding.ytext.delete(0, binding.ytext.length);
-        binding.ytext.insert(0, quill.root.innerHTML);
+        binding.ytext.insert(0, delta);
       }
     });
 

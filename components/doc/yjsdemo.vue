@@ -422,6 +422,7 @@ const initCollaborativeEditor = async () => {
         awareness: awareness,
       },
     },
+    readOnly: props.isReadOnly,
     placeholder: placeholderText,
   });
 

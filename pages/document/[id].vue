@@ -2,9 +2,9 @@
   <div
     class="h-full w-full flex flex-col overflow-y-auto dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-52"
   >
-    <WriteRead v-if="hasWritePermission"  />
-    <ReadOnlyViewer v-else />
-
+    <!-- <WriteRead v-if="hasWritePermission"  />
+    <ReadOnlyViewer v-else /> -->
+<WriteRead  />
   </div>
 </template>
 
@@ -40,7 +40,7 @@ const onlineUsers = ref([
 
 // 使用 definePageMeta 指定全局布局
 definePageMeta({
-    layout: "fullscreen",
+  layout: "fullscreen",
 });
 
 onMounted(() => {
@@ -53,6 +53,7 @@ const fetchCollaborators = async () => {
     console.log("文档id:", documentId);
     // 获取文档协作者列表
     const response2 = await documentShareApi.getCollaborators(documentId);
+    console.log("协作者列表:", response2);
     // 判断当前用户是否有读写权限
     if (response2.data.collaborators.length === 0) {
       hasWritePermission.value = false;

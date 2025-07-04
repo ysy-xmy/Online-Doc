@@ -77,7 +77,7 @@
             <button class="btn btn-primary btn-sm" @click="navigateTo('/knowledgeHome')">
               新建知识库
             </button>
-            <button class="btn btn-secondary btn-sm" @click="navigateTo('/knowledgeHome')">
+            <button class="btn btn-secondary btn-sm" @click="showCreateDocModal = true">
               新建文档
             </button>
           </div>
@@ -255,6 +255,7 @@ const workspaceStore = useWorkspaceStore()
 const documentStore = useDocumentStore()
 
 const searchKeyword = ref('')
+const showCreateDocModal = ref(false)
 
 // 页面初始化
 onMounted(async () => {
@@ -267,8 +268,16 @@ onMounted(async () => {
 })
 
 // 打开文档
+const { $axios } = useNuxtApp();
 const openDocument = (id) => {
-  navigateTo(`/document/${id}`)
+  $axios(`/api/documents/${id}`, { 
+    method: "GET",
+  }).then((res) => {
+    //这个接口需要添加一个知识库ID
+    console.log("res",res.data);
+    navigateTo(`/document/${res.data.id}`)
+  })
+  // navigateTo(`/document/${id}`)
 }
 
 // 刷新仪表板

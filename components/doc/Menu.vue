@@ -19,18 +19,6 @@
             </div>
         </div>
 
-        <div class="document-actions">
-            <button
-                class="publish-btn"
-                :class="{ 'published': isPublished }"
-                @click="togglePublishStatus"
-                :disabled="isUpdatingStatus"
-            >
-                <i class="status-icon" :class="isPublished ? 'published' : 'draft'"></i>
-                {{ isPublished ? '已发布' : '发布' }}
-            </button>
-        </div>
-
         <div class="online-users">
             <div class="users-info">
                 <span class="users-count">
@@ -62,7 +50,6 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { useDocumentStore } from "@/stores/document";
-import { documentApi } from "@/api/document";
 import { debounce } from "lodash";
 // 定义props
 const props = defineProps({
@@ -70,18 +57,10 @@ const props = defineProps({
         type: String,
         default: "未命名文档",
     },
-    documentId: {
-        type: [String, Number],
-        required: true,
-    },
-    documentStatus: {
-        type: String,
-        default: "DRAFT",
-    },
 });
 
 // 定义emits
-const emit = defineEmits(["update:documentName", "save", "statusChanged"]);
+const emit = defineEmits(["update:documentName", "save"]);
 
 // 使用 store 中的文档信息
 const documentStore = useDocumentStore();
@@ -89,18 +68,6 @@ const documentInfo = documentStore.documentInfo;
 
 // 从 store 获取用户列表
 const onlineUsers = computed(() => documentStore.allUsersList);
-
-// 发布状态相关
-const isPublished = ref(props.documentStatus === 'PUBLISHED');
-const isUpdatingStatus = ref(false);
-
-// 监听props中的documentStatus变化
-watch(
-    () => props.documentStatus,
-    (newStatus) => {
-        isPublished.value = newStatus === 'PUBLISHED';
-    }
-);
 
 // 监听props变化
 watch(
@@ -154,36 +121,6 @@ const autoSave = () => {
     debouncedRestoreSaveStatus();
 };
 
-// 切换发布状态
-const togglePublishStatus = async () => {
-    if (isUpdatingStatus.value) return;
-
-    try {
-        isUpdatingStatus.value = true;
-        const newStatus = isPublished.value ? 'DRAFT' : 'PUBLISHED';
-
-        const response = await documentApi.update(props.documentId, {
-            status: newStatus
-        });
-
-        if (response.code === 'SUCCESS') {
-            isPublished.value = newStatus === 'PUBLISHED';
-            emit('statusChanged', newStatus);
-
-            // 显示成功提示
-            documentStore.updateSaveStatus(newStatus === 'PUBLISHED' ? '已发布' : '已保存为草稿');
-            setTimeout(() => {
-                documentStore.updateSaveStatus('已保存');
-            }, 2000);
-        }
-    } catch (error) {
-        console.error('更新文档状态失败:', error);
-        // 可以添加错误提示
-    } finally {
-        isUpdatingStatus.value = false;
-    }
-};
-
 // 监听文档名称变化
 watch(
     () => documentInfo.name,
@@ -214,63 +151,6 @@ defineExpose({
     border-bottom: 1px solid #e9ecef;
     flex-shrink: 0; /* 防止头部被压缩 */
     width: 100%;
-}
-
-.document-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.publish-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: white;
-    color: #374151;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.publish-btn:hover {
-    background: #f9fafb;
-    border-color: #9ca3af;
-}
-
-.publish-btn.published {
-    background: #10b981;
-    border-color: #10b981;
-    color: white;
-}
-
-.publish-btn.published:hover {
-    background: #059669;
-    border-color: #059669;
-}
-
-.publish-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.status-icon {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.status-icon.draft {
-    background: #f59e0b;
-}
-
-.status-icon.published {
-    background: white;
 }
 
 .document-info {

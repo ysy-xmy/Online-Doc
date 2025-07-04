@@ -34,7 +34,7 @@
                         class="w-24 h-24 rounded-full ring-4 ring-primary ring-offset-base-100 ring-offset-2 overflow-hidden"
                     >
                         <img
-                            :src="userStore.avatar || '/avatar_1.webp'"
+                            :src="avatar || '/avatar_1.webp'"
                             alt="用户头像"
                             class="w-full h-full object-cover"
                         />
@@ -62,20 +62,6 @@
 
             <!-- 用户信息表单 -->
             <form @submit.prevent="saveUserInfo" class="space-y-4">
-                <!-- 用户名 -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text text-base-content">用户名</span>
-                    </label>
-                    <input
-                        v-model="formData.username"
-                        type="text"
-                        class="input input-bordered bg-base-200 text-base-content"
-                        :disabled="true"
-                        placeholder="用户名不可修改"
-                    />
-                </div>
-
                 <!-- 昵称 -->
                 <div class="form-control">
                     <label class="label">
@@ -86,6 +72,7 @@
                         type="text"
                         class="input input-bordered bg-base-200 text-base-content"
                         placeholder="请输入昵称"
+                        style="margin-top: 5px"
                     />
                 </div>
 
@@ -104,6 +91,7 @@
                         type="email"
                         class="input input-bordered bg-base-200 text-base-content"
                         placeholder="请输入邮箱（可选）"
+                        style="margin-top: 5px"
                     />
                 </div>
 
@@ -187,106 +175,74 @@ const emit = defineEmits(["close"]);
 const isLoading = ref(false);
 const showAvatarUpload = ref(false);
 const selectedAvatar = ref(1);
+const avatar = ref(userStore.avatar);
 
 // 表单数据
 const formData = reactive({
-    username: "",
-    nickname: "",
-    email: "",
+    nickname: JSON.parse(localStorage.getItem("userInfo"))?.nickname,
+    email: JSON.parse(localStorage.getItem("userInfo"))?.email,
+    avatarIndex: 1,
 });
-
-// 初始化表单数据
-const initFormData = () => {
-    formData.username = userStore.username || "";
-    formData.nickname = userStore.nickname || "";
-    formData.email = userStore.email || "";
-};
 
 // 重置表单
 const resetForm = () => {
-    initFormData();
+    formData.nickname = userStore.nickname || "";
+    formData.email = userStore.email || "";
 };
 
 // 选择头像
 const selectAvatar = (index) => {
     selectedAvatar.value = index;
+    formData.avatarIndex = index;
 };
 
 // 打开头像选择
 const openAvatarUpload = () => {
-    // 从当前头像URL中提取数字
-    const currentAvatar = userStore.avatar || "/avatar_1.webp";
-    const match = currentAvatar.match(/avatar_(\d+)\.webp/);
-    if (match) {
-        selectedAvatar.value = parseInt(match[1]);
-    } else {
-        selectedAvatar.value = 1;
-    }
+    selectedAvatar.value = formData.avatarIndex;
     showAvatarUpload.value = true;
 };
 
 // 确认头像更改
-const confirmAvatarChange = async () => {
-    try {
-        isLoading.value = true;
-        const newAvatar = `/avatar_${selectedAvatar.value}.webp`;
-
-        // 更新用户头像
-        await $axios.put("/api/auth/profile", {
-            avatar: newAvatar,
-        });
-
-        // 更新store
-        userStore.avatar = newAvatar;
-
-        // 更新本地存储
-        const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
-        userInfo.avatar = newAvatar;
-        localStorage.setItem("userInfo", JSON.stringify(userInfo));
-
-        showAvatarUpload.value = false;
-    } catch (error) {
-        console.error("更新头像失败:", error);
-        alert("更新头像失败，请重试");
-    } finally {
-        isLoading.value = false;
-    }
+const confirmAvatarChange = () => {
+    formData.avatarIndex = selectedAvatar.value;
+    showAvatarUpload.value = false;
+    avatar.value = `/avatar_${selectedAvatar.value}.webp`;
 };
 
 // 保存用户信息
 const saveUserInfo = async () => {
+    const data = {
+        nickname: formData.nickname,
+        email: formData.email,
+        // avatarId: "",  头像不支持修改
+    };
+
     try {
-        isLoading.value = true;
+        $axios("api/auth/me", {
+            method: "PUT",
+            body: JSON.stringify(data),
+        }).then((res) => {
+            console.log("res", res);
 
-        // 发送更新请求
-        await $axios.put("/api/auth/profile", {
-            nickname: formData.nickname,
-            email: formData.email,
+            //更新用户信息
+            userStore.nickname = res.data?.nickname;
+            userStore.username = res.data?.nickname;
+            // userStore.email = res.data?.email;//没有返回邮箱
+            userStore.avatar = res.data?.avatar;
+
+            //关闭模态框
+            // console.log("关闭模态框");
+            emit("close");
         });
-
-        // 更新store
-        userStore.nickname = formData.nickname;
-        userStore.email = formData.email;
-
-        // 更新本地存储
-        const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
-        userInfo.nickname = formData.nickname;
-        userInfo.email = formData.email;
-        localStorage.setItem("userInfo", JSON.stringify(userInfo));
-
-        // 显示成功提示
-        alert("保存成功！");
     } catch (error) {
-        console.error("保存用户信息失败:", error);
-        alert("保存失败，请重试");
-    } finally {
-        isLoading.value = false;
+        console.error("接口错误:", error);
     }
 };
 
 // 组件挂载时初始化数据
 onMounted(() => {
-    initFormData();
+    formData.nickname = userStore.nickname || "";
+    formData.email = userStore.email || "";
 });
 </script>
 

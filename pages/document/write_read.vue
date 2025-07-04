@@ -41,6 +41,7 @@
 import { useDocumentStore } from "@/stores/document";
 import FloatingButton from "@/components/AI/FloatingButton.vue";
 import SummaryModal from "@/components/AI/SummaryModal.vue";
+import { useDocumentStore as useDocumentStoreAPI } from "@/stores/documentStore";
 
 const isAISummaryVisible = ref(false);
 const startSummary = () => {
@@ -52,6 +53,7 @@ const handleClosePanel = () => {
 
 const documentStore = useDocumentStore();
 const documentInfo = documentStore.documentInfo;
+const documentStoreAPI = useDocumentStoreAPI();
 
 // 使用 definePageMeta 指定全局布局
 definePageMeta({
@@ -91,9 +93,29 @@ const onlineUsers = ref([
 
 // 模拟获取文档内容的方法
 const fetchDocumentContent = async () => {
-  // 在实际应用中，这里应该是从后端获取文档内容
-  documentContent.value = `这是文档 ${documentId} 的内容`;
-  documentName.value = `文档 ${documentId}`;
+  try {
+        // 调用真实的API获取文档详情
+        const documentData = await documentStoreAPI.fetchDocumentById(
+            Number(documentId)
+        );
+
+        if (documentData) {
+            // 更新文档内容
+            documentContent.value =
+                documentData.content || `这是文档 ${documentId} 的内容`;
+            // 更新文档名称
+            documentName.value = documentData.title || `文档 ${documentId}`;
+            // 更新store中的文档名称
+            documentStore.updateDocumentName(
+                documentData.title || `文档 ${documentId}`
+            );
+        }
+    } catch (error) {
+        console.error("获取文档详情失败:", error);
+        // 如果API调用失败，使用默认值
+        documentContent.value = `这是文档 ${documentId} 的内容`;
+        documentName.value = `文档 ${documentId}`;
+    }
 };
 
 const openSidebar = (data) => {

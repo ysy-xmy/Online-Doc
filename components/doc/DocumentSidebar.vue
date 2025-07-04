@@ -13,7 +13,6 @@
         @click="toggleSidebar"
       >
         <div class="p-1.5 flex items-center justify-center">
-          <!-- <Icon name="mdi:arrow-right" class="h-8 w-8" /> -->
           <img
           class="h-8 w-8"
           src="https://img.icons8.com/color/48/back--v1.png"
@@ -49,7 +48,6 @@
             <component 
               :is="activeTabComponent"
               :commentData ="commentData"
-              :commentAlldata = "commentAlldata"
               @addComment="handleAddComment"
               :key="activeTab"
             />
@@ -75,10 +73,6 @@ const props = defineProps({
   },
   commentData: {
     type: [Array, Object],
-    default:[]
-  },
-  commentAlldata:{
-    type:Array,
     default:[]
   }
 })

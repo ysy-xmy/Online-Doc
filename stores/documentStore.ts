@@ -70,6 +70,10 @@ export const useDocumentStore = defineStore('documentStore', {
         const response = await documentApi.getByWorkspace(workspaceId, params)
         
         if (response.code === 'SUCCESS') {
+
+          //打印知识库对应的文档列表
+          // console.log("response.data99999999:", response.data.documents);
+
           if (params.refresh || params.page === 0) {
             // 刷新或第一页，替换数据
             this.documents = response.data.documents
@@ -215,6 +219,7 @@ export const useDocumentStore = defineStore('documentStore', {
         const response = await documentApi.getRecent(limit)
         
         if (response.code === 'SUCCESS') {
+
           this.recentDocuments = response.data
         } else {
           throw new Error(response.message || '获取最近文档失败')

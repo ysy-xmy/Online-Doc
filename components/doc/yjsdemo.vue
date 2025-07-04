@@ -1064,24 +1064,121 @@ const setRevisionMode = (mode) => {
 const handleRevisionChange = (delta, oldDelta, source) => {
   if (source !== 'user' || !revisionMode.value) return;
 
-  console.log('完整的 Delta:', delta);
-
   let currentIndex = 0;
 
   delta.ops.forEach((op) => {
-    console.log('当前操作:', op);
-    
     if (op.retain) {
       currentIndex += op.retain;
     } else if (op.insert) {
       handleAddition(op, currentIndex);
       currentIndex += op.insert.length;
     } else if (op.delete) {
-      console.log('删除内容类型:', typeof op.delete, op.delete);
-      handleDeletion(op, currentIndex);
+      
+      const length = typeof op.delete === 'number' ? op.delete : 1;
+      if (length <= 0) return;
+      const deletedDelta = oldDelta.slice(currentIndex, currentIndex + length);
+      if (!deletedDelta || deletedDelta === '\n') return;
+
+      // 包裹为删除
+      handleMarkAsDeleted(currentIndex, length, deletedDelta);
     }
   });
 };
+
+function handleMarkAsDeleted(index, length, deletedDelta) {
+  const Quill = quillModule.value.default;
+  const Delta = Quill.import('delta');
+  const Inline = Quill.import('blots/inline');
+
+  class DeletedContentBlot extends Inline {
+    static create(value) {
+      const node = super.create(value);
+      node.setAttribute('data-deleted', JSON.stringify(value));
+      node.style.textDecoration = 'line-through';
+      node.style.color = 'red';
+      node.style.opacity = '1';
+      return node;
+    }
+    static value(node) {
+      return JSON.parse(node.getAttribute('data-deleted'));
+    }
+  }
+  DeletedContentBlot.blotName = 'deletedContent';
+  DeletedContentBlot.tagName = 'span';
+  Quill.register(DeletedContentBlot, true);
+
+  // 1. 先把被删内容插回去
+  quill.updateContents(
+    new Delta()
+      .retain(index)
+      .concat(deletedDelta)
+  );
+
+  // 2. 重新查找合并区间
+  let mergeStart = index;
+  let mergeLen = 0;
+
+  // 向前查找所有连续的 data-deleted
+  while (mergeStart > 0) {
+    const [prevLeaf] = quill.getLeaf(mergeStart - 1);
+    if (
+      prevLeaf &&
+      prevLeaf.parent &&
+      prevLeaf.parent.domNode &&
+      prevLeaf.parent.domNode.hasAttribute('data-deleted')
+    ) {
+      const prevLen = prevLeaf.parent.length();
+      mergeStart -= prevLen;
+      mergeLen += prevLen;
+    } else {
+      break;
+    }
+  }
+
+  // 向后查找所有连续的 data-deleted
+  let tempIndex = index + length;
+  while (true) {
+    const [nextLeaf] = quill.getLeaf(tempIndex);
+    if (
+      nextLeaf &&
+      nextLeaf.parent &&
+      nextLeaf.parent.domNode &&
+      nextLeaf.parent.domNode.hasAttribute('data-deleted')
+    ) {
+      const nextLen = nextLeaf.parent.length();
+      mergeLen += nextLen;
+      tempIndex += nextLen;
+    } else {
+      break;
+    }
+  }
+
+  // 加上本次插入的长度
+  mergeLen += length;
+
+  // 3. 先移除合并区间的所有 data-deleted
+  quill.formatText(mergeStart, mergeLen, 'deletedContent', false);
+
+  // 4. 再整体包裹
+  quill.formatText(mergeStart, mergeLen, 'deletedContent', {
+    type: 'delete',
+    content: quill.getContents(mergeStart, mergeLen), // 这里可以存 Delta
+    timestamp: Date.now(),
+    userId: userInfo.value.id,
+    hint: '删除'
+  });
+
+  // Yjs 更新
+  if (ydoc && ytext) {
+    ydoc.transact(() => {
+      const binding = quill.getModule('y-quill');
+      if (binding) {
+        binding.ytext.delete(0, binding.ytext.length);
+        binding.ytext.insert(0, quill.root.innerHTML);
+      }
+    });
+  }
+}
 
 const handleAddition = (op, index) => {
   let content = op.insert;
@@ -1152,78 +1249,6 @@ const handleAddition = (op, index) => {
   });
 };
 
-const handleDeletion = (op, index) => {
-  const content = op.delete;
-  let deletedText = '';
-  
-  if (typeof content === 'number') {
-    try {
-      deletedText = quill.getText(index-1, content);
-    } catch (error) {
-      console.error('获取删除文本时出错:', error);
-      return;
-    }
-  } else if (typeof content !== 'string') {
-    console.warn('删除的内容不是字符串或数字，跳过处理:', content);
-    return;
-  } else {
-    deletedText = content;
-  }
-
-  if (!deletedText || deletedText === '\n') return;
-
-  try {
-    // 注册自定义 Blot
-    const Quill = quillModule.value.default;
-    const Inline = Quill.import('blots/inline');
-
-    class DeletedContentBlot extends Inline {
-      static create(value) {
-        const node = super.create(value);
-        node.setAttribute('data-deleted', JSON.stringify(value));
-        node.style.textDecoration = 'line-through';
-        node.style.color = 'red';
-        node.style.opacity = '1';
-        // 插入操作按钮
-  
-        return node;
-      }
-
-      static value(node) {
-        return JSON.parse(node.getAttribute('data-deleted'));
-      }
-    }
-
-    DeletedContentBlot.blotName = 'deletedContent';
-    DeletedContentBlot.tagName = 'span';
-
-    Quill.register(DeletedContentBlot, true);
-
-    // 插入并格式化文本
-    quill.insertText(index, deletedText);
-    quill.formatText(index, deletedText.length, 'deletedContent', {
-      type: 'delete',
-      content: deletedText,
-      timestamp: Date.now(),
-      userId: userInfo.value.id,
-      hint: `删除：${deletedText}`
-    });
-
-    // Yjs 更新
-    if (ydoc && ytext) {
-      ydoc.transact(() => {
-        const binding = quill.getModule('y-quill');
-        if (binding) {
-          binding.ytext.delete(0, binding.ytext.length);
-          binding.ytext.insert(0, quill.root.innerHTML);
-        }
-      });
-    }
-  } catch (error) {
-    console.error('处理删除内容时出错:', error);
-  }
-};
-
 const handleStyleChange = (op, index) => {
   const attributes = op.attributes;
   const styleInfo = {
@@ -1248,7 +1273,8 @@ const applyRevision = () => {
     const value = JSON.parse(node.getAttribute('data-new'));
     const index = quill.getIndex(node);
     quill.deleteText(index, 1);
-    quill.insertText(index, value.content);
+    quill.insertText(index, value.content, 'user');
+    quill.formatText(index, value.content.length, { color: false, 'newContent': false });
   });
   // 处理删除内容
   Array.from(editor.querySelectorAll('span[data-deleted]')).forEach(node => {
@@ -1326,27 +1352,6 @@ onMounted(async () => {
 
   // 保存初始文档状态
   oldDocumentState = quill.getContents();
-
-  // 事件委托：处理修订按钮点击
-  quill.root.addEventListener('click', (e) => {
-    if (e.target.classList.contains('revision-apply-btn')) {
-      handleApplyRevision(e.target.parentNode);
-    }
-    if (e.target.classList.contains('revision-reject-btn')) {
-      handleRejectRevision(e.target.parentNode);
-    }
-  });
-
-  // 清理非法的 span[data-comment]
-  const editor = quill.root;
-  Array.from(editor.querySelectorAll('span[data-comment]')).forEach(node => {
-    // 如果不是由 CommentBlot 生成，可以用 quill API 替换为纯文本
-    if (!node.classList.contains('ql-comment')) {
-      const index = quill.getIndex(node);
-      quill.deleteText(index, 1);
-      // 你可以选择插入 node.innerText 或什么都不插入
-    }
-  });
 });
 
 // 组件卸载时清理
@@ -1390,30 +1395,38 @@ defineExpose({
 });
 
 function handleApplyRevision(node) {
-  // 判断是新增还是删除
+  const Quill = quillModule.value.default;
+  const blot = Quill.find(node);
+  if (!blot) return;
+  const index = quill.getIndex(blot);
+
   if (node.hasAttribute('data-new')) {
-    // 新增内容：去掉Blot，保留纯文本
+    // 新增内容：去掉Blot，保留纯文本（黑色）
     const value = JSON.parse(node.getAttribute('data-new'));
-    const index = quill.getIndex(node);
-    quill.deleteText(index, 1);
-    quill.insertText(index, value.content);
+    quill.deleteText(index, value.content.length); // 删除整个修订内容
+    quill.insertText(index, value.content, 'user');
+    quill.formatText(index, value.content.length, { color: false, 'newContent': false });
   } else if (node.hasAttribute('data-deleted')) {
     // 删除内容：直接移除
-    const index = quill.getIndex(node);
-    quill.deleteText(index, 1);
+    const value = JSON.parse(node.getAttribute('data-deleted'));
+    quill.deleteText(index, value.content.length); // 删除整个修订内容
   }
 }
 
 function handleRejectRevision(node) {
+  const Quill = quillModule.value.default;
+  const blot = Quill.find(node);
+  if (!blot) return;
+  const index = quill.getIndex(blot);
+
   if (node.hasAttribute('data-new')) {
     // 新增内容：直接删除
-    const index = quill.getIndex(node);
-    quill.deleteText(index, 1);
+    const value = JSON.parse(node.getAttribute('data-new'));
+    quill.deleteText(index, value.content.length); // 删除全部修订内容
   } else if (node.hasAttribute('data-deleted')) {
     // 删除内容：恢复原文
     const value = JSON.parse(node.getAttribute('data-deleted'));
-    const index = quill.getIndex(node);
-    quill.deleteText(index, 1);
+    quill.deleteText(index, value.content.length); // 删除全部修订内容
     quill.insertText(index, value.content);
   }
 }
@@ -1421,21 +1434,17 @@ function handleRejectRevision(node) {
 // 补充所有修订内容的按钮
 function addRevisionButtons() {
   const editor = quill.root;
-  // 新增内容
-  // editor.querySelectorAll('span[data-new]').forEach(node => {
-  //   if (!node.querySelector('.revision-apply-btn')) {
-  //     const applyBtn = document.createElement('button');
-  //     applyBtn.textContent = '应用';
-  //     applyBtn.className = 'revision-apply-btn';
-  //     const rejectBtn = document.createElement('button');
-  //     rejectBtn.textContent = '拒绝';
-  //     rejectBtn.className = 'revision-reject-btn';
-  //     node.appendChild(applyBtn);
-  //     node.appendChild(rejectBtn);
-  //   }
-  // });
-  // 删除内容
+  // 先移除所有旧的浮动框
+  document.querySelectorAll('.revision-floating-box').forEach(box => box.remove());
 
+  // 新增内容
+  editor.querySelectorAll('span[data-new]').forEach(node => {
+    createRevisionFloatingBox(node, 'add');
+  });
+  // 删除内容
+  editor.querySelectorAll('span[data-deleted]').forEach(node => {
+    createRevisionFloatingBox(node, 'delete');
+  });
 }
 
 // 移除所有修订按钮
@@ -1445,6 +1454,71 @@ function removeRevisionButtons() {
     btn.remove();
   });
 }
+
+function createRevisionFloatingBox(node, type) {
+  // 解析数据
+  const data = JSON.parse(node.getAttribute(type === 'add' ? 'data-new' : 'data-deleted'));
+  // 创建浮动框
+  const box = document.createElement('div');
+  box.className = 'revision-floating-box';
+  box.innerHTML = `
+    <div class="revision-title">${type === 'add' ? '新增' : '删除'}：${data.content}</div>
+    <div class="revision-meta">
+      <span>修订人：${data.userId || '未知'}</span>
+      <span>时间：${new Date(data.timestamp).toLocaleString()}</span>
+    </div>
+    <div class="revision-actions">
+      <button class="revision-apply-btn">✔</button>
+      <button class="revision-reject-btn">✖</button>
+    </div>
+  `;
+  // 定位
+  const rect = node.getBoundingClientRect();
+  const editorRect = quillEditor.value.getBoundingClientRect();
+  box.style.position = 'absolute';
+  box.style.left = `${rect.right - editorRect.left + 10}px`;
+  box.style.top = `${rect.top - editorRect.top}px`;
+  box.style.zIndex = 2000;
+  box.style.borderLeftColor = type === 'add' ? '#36b3f7' : '#e74c3c';
+
+  // 事件
+  box.querySelector('.revision-apply-btn').onclick = (e) => {
+    e.stopPropagation();
+    handleApplyRevision(node);
+    box.remove();
+    addRevisionButtons(); // 重新渲染
+  };
+  box.querySelector('.revision-reject-btn').onclick = (e) => {
+    e.stopPropagation();
+    handleRejectRevision(node);
+    box.remove();
+    addRevisionButtons(); // 重新渲染
+  };
+
+  // 插入到编辑器容器
+  quillEditor.value.appendChild(box);
+}
+
+const getTextFromDelta = (delta, index, length) => {
+  // delta: oldDelta
+  let str = '';
+  let curr = 0;
+  delta.ops.forEach(op => {
+    if (op.insert) {
+      const opStr = typeof op.insert === 'string' ? op.insert : '';
+      if (curr + opStr.length > index && curr < index + length) {
+        // 取交集部分
+        const start = Math.max(0, index - curr);
+        const end = Math.min(opStr.length, index + length - curr);
+        str += opStr.slice(start, end);
+      }
+      curr += opStr.length;
+    } else if (op.retain) {
+      curr += op.retain;
+    }
+  });
+  return str;
+};
 </script>
 
 <template>
@@ -1649,15 +1723,82 @@ function removeRevisionButtons() {
   opacity: 1;
 }
 
-.revision-apply-btn, .revision-reject-btn {
-  margin-left: 4px;
-  font-size: 10px;
-  padding: 0 4px;
-  border: none;
-  border-radius: 3px;
-  background: #eee;
-  cursor: pointer;
+.revision-floating-box {
+  min-width: 200px;
+  max-width: 320px;
+  background: linear-gradient(90deg, #f8fafc 80%, #e3f6fc 100%);
+  border-left: 5px solid #36b3f7;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(54,179,247,0.10), 0 1.5px 4px rgba(0,0,0,0.06);
+  padding: 12px 16px 12px 14px;
+  font-size: 14px;
+  color: #222;
+  position: absolute;
+  z-index: 2000;
+  pointer-events: auto;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  border-top: 1px solid #e3f6fc;
+  border-bottom: 1px solid #e3f6fc;
 }
-.revision-apply-btn { color: green; }
-.revision-reject-btn { color: red; }
+
+.revision-floating-box:hover {
+  box-shadow: 0 8px 24px rgba(54,179,247,0.18), 0 2px 8px rgba(0,0,0,0.10);
+  border-left-color: #1e90ff;
+}
+
+.revision-title {
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #1e90ff;
+  letter-spacing: 1px;
+}
+
+.revision-title:before {
+  content: "📝";
+  margin-right: 6px;
+}
+
+.revision-meta {
+  font-size: 12px;
+  color: #6c757d;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 12px;
+}
+
+.revision-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.revision-apply-btn, .revision-reject-btn {
+  border: none;
+  background: #f0f9ff;
+  border-radius: 4px;
+  padding: 3px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  transition: background 0.2s, color 0.2s;
+  box-shadow: 0 1px 2px rgba(30,144,255,0.04);
+}
+
+.revision-apply-btn {
+  color: #27ae60;
+  background: #eafaf1;
+}
+.revision-apply-btn:hover {
+  background: #d4f5e6;
+  color: #219150;
+}
+
+.revision-reject-btn {
+  color: #e74c3c;
+  background: #fff0f0;
+}
+.revision-reject-btn:hover {
+  background: #ffeaea;
+  color: #c0392b;
+}
 </style>

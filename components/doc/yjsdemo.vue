@@ -52,6 +52,31 @@ const emits = defineEmits(["openCommentPanel"]);
 const revisionMode = ref(false);
 let oldDocumentState;
 
+let deletedBlotRegistered = false;
+const registerDeletedContentBlot = () => {
+  if (deletedBlotRegistered) return;
+  const Quill = quillModule.value?.default;
+  if (!Quill) return;
+  const Inline = Quill.import('blots/inline');
+  class DeletedContentBlot extends Inline {
+    static create(value) {
+      const node = super.create(value);
+      node.setAttribute('data-deleted', JSON.stringify(value));
+      node.style.textDecoration = 'line-through';
+      node.style.color = 'red';
+      node.style.opacity = '1';
+      return node;
+    }
+    static value(node) {
+      return JSON.parse(node.getAttribute('data-deleted'));
+    }
+  }
+  DeletedContentBlot.blotName = 'deletedContent';
+  DeletedContentBlot.tagName = 'span';
+  Quill.register(DeletedContentBlot, true);
+  deletedBlotRegistered = true;
+};
+
 // 异步加载依赖
 const loadDependencies = async () => {
   if (!isClient) return;
@@ -497,7 +522,7 @@ const initCollaborativeEditor = async () => {
 
   // 配置 WebSocket 提供者（发起请求）
   provider = new websocketModule.value.WebsocketProvider(
-    "ws://8.134.200.53:1234",
+    "ws://localhost:1234",
     // "ws://8.134.200.53:1234",
     "my-roomname",
     ydoc,
@@ -783,21 +808,7 @@ const initCollaborativeEditor = async () => {
   // 添加键盘事件监听器（只读模式下禁用键盘输入）
   nextTick(() => {
     if (quill && quill.root) {
-      quill.root.addEventListener("keydown", (event) => {
-        if (props.isReadOnly) {
-          // 允许复制(Ctrl+C/Cmd+C)、粘贴(Ctrl+V/Cmd+V)、选择全文档(Ctrl+A/Cmd+A)
-          if (
-            (event.ctrlKey || event.metaKey) &&
-            (event.key === "c" || event.key === "v" || event.key === "a")
-          ) {
-            return; // 不阻止快捷键
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          return;
-        }
-        handleKeyboardEvent(event);
-      });
+      quill.root.addEventListener("keydown", handleKeyboardEvent, true);
     }
   });
 
@@ -832,13 +843,40 @@ const handleSelectionChange = (range, oldRange, source) => {
 };
 
 // 新增键盘事件监听
-const handleKeyboardEvent = (event) => {
-  const toolbar = floatingToolbar.value;
-  if (!toolbar) return;
+const handleKeyboardEvent = async (event) => {
+  if (!revisionMode.value) return;
 
-  // 如果按下删除键（Backspace 或 Delete）
   if (event.key === "Backspace" || event.key === "Delete") {
-    toolbar.classList.remove("active");
+    event.preventDefault();
+    event.stopPropagation();
+
+    let selection = quill.getSelection();
+    if (!selection) return;
+
+    let index = selection.index;
+    let length = selection.length;
+
+    // 无选区时，Backspace 删除前一个字符，Delete 删除后一个字符
+    if (length === 0) {
+      if (event.key === "Backspace" && index > 0) {
+        index = index - 1;
+        length = 1;
+      } else if (event.key === "Delete" && index < quill.getLength() - 1) {
+        length = 1;
+      } else {
+        return;
+      }
+    }
+
+    // 获取被删内容
+    const deletedDelta = quill.getContents(index, length);
+
+    if (length > 0 && index >= 0 && (index + length) <= quill.getLength()) {
+      await handleMarkAsDeleted(index, length);
+    }
+
+    // 取消选区
+    quill.setSelection(index, 0);
   }
 };
 
@@ -1072,53 +1110,19 @@ const handleRevisionChange = (delta, oldDelta, source) => {
     } else if (op.insert) {
       handleAddition(op, currentIndex);
       currentIndex += op.insert.length;
-    } else if (op.delete) {
-      
-      const length = typeof op.delete === 'number' ? op.delete : 1;
-      if (length <= 0) return;
-      const deletedDelta = oldDelta.slice(currentIndex, currentIndex + length);
-      if (!deletedDelta || deletedDelta === '\n') return;
-
-      // 包裹为删除
-      handleMarkAsDeleted(currentIndex, length, deletedDelta);
     }
+    // 不处理 delete
   });
 };
 
-function handleMarkAsDeleted(index, length, deletedDelta) {
+async function handleMarkAsDeleted(index, length) {
   const Quill = quillModule.value.default;
-  const Delta = Quill.import('delta');
-  const Inline = Quill.import('blots/inline');
 
-  class DeletedContentBlot extends Inline {
-    static create(value) {
-      const node = super.create(value);
-      node.setAttribute('data-deleted', JSON.stringify(value));
-      node.style.textDecoration = 'line-through';
-      node.style.color = 'red';
-      node.style.opacity = '1';
-      return node;
-    }
-    static value(node) {
-      return JSON.parse(node.getAttribute('data-deleted'));
-    }
-  }
-  DeletedContentBlot.blotName = 'deletedContent';
-  DeletedContentBlot.tagName = 'span';
-  Quill.register(DeletedContentBlot, true);
-
-  // 1. 先把被删内容插回去
-  quill.updateContents(
-    new Delta()
-      .retain(index)
-      .concat(deletedDelta)
-  );
-
-  // 2. 重新查找合并区间
+  // 1. 计算合并区间
   let mergeStart = index;
-  let mergeLen = 0;
+  let mergeLen = length;
 
-  // 向前查找所有连续的 data-deleted
+  // 向前合并
   while (mergeStart > 0) {
     const [prevLeaf] = quill.getLeaf(mergeStart - 1);
     if (
@@ -1134,8 +1138,7 @@ function handleMarkAsDeleted(index, length, deletedDelta) {
       break;
     }
   }
-
-  // 向后查找所有连续的 data-deleted
+  // 向后合并
   let tempIndex = index + length;
   while (true) {
     const [nextLeaf] = quill.getLeaf(tempIndex);
@@ -1153,31 +1156,50 @@ function handleMarkAsDeleted(index, length, deletedDelta) {
     }
   }
 
-  // 加上本次插入的长度
-  mergeLen += length;
-
-  // 3. 先移除合并区间的所有 data-deleted
+  // 2. 先移除合并区间的所有 deletedContent
   quill.formatText(mergeStart, mergeLen, 'deletedContent', false);
 
-  // 4. 再整体包裹
+  // 3. 等待内容刷新
+  await nextTick();
+
+  // 4. 先整体包裹
   quill.formatText(mergeStart, mergeLen, 'deletedContent', {
     type: 'delete',
-    content: quill.getContents(mergeStart, mergeLen), // 这里可以存 Delta
+    content: '', // 先占位
     timestamp: Date.now(),
     userId: userInfo.value.id,
-    hint: '删除'
+    hint: ''
   });
 
-  // Yjs 更新
-  if (ydoc && ytext) {
-    ydoc.transact(() => {
-      const binding = quill.getModule('y-quill');
-      if (binding) {
-        binding.ytext.delete(0, binding.ytext.length);
-        binding.ytext.insert(0, quill.root.innerHTML);
-      }
-    });
+  await nextTick();
+
+  // 5. 用 DOM 查询最新的 span[data-deleted]，用 Quill.find 获取 Blot，再 getIndex
+  const editor = quill.root;
+  const allSpans = Array.from(editor.querySelectorAll('span[data-deleted]'));
+  let found = null;
+  for (const span of allSpans) {
+    const blot = Quill.find(span);
+    if (!blot) continue;
+    const spanIndex = quill.getIndex(blot);
+    if (spanIndex === mergeStart) {
+      found = span;
+      break;
+    }
   }
+  if (found) {
+    const text = found.textContent;
+    const data = {
+      type: 'delete',
+      content: text,
+      timestamp: Date.now(),
+      userId: userInfo.value.id,
+      hint: `删除：${text}`
+    };
+    found.setAttribute('data-deleted', JSON.stringify(data));
+  }
+
+  // 6. 移动光标到合并区块起点
+  quill.setSelection(mergeStart, 0, 'silent');
 }
 
 const handleAddition = (op, index) => {
@@ -1346,6 +1368,7 @@ onMounted(async () => {
 
   // 先加载依赖
   await loadDependencies();
+  registerDeletedContentBlot();
 
   // 初始化编辑器
   await initCollaborativeEditor();
@@ -1399,17 +1422,15 @@ function handleApplyRevision(node) {
   const blot = Quill.find(node);
   if (!blot) return;
   const index = quill.getIndex(blot);
+  const length = blot.length();
 
   if (node.hasAttribute('data-new')) {
-    // 新增内容：去掉Blot，保留纯文本（黑色）
-    const value = JSON.parse(node.getAttribute('data-new'));
-    quill.deleteText(index, value.content.length); // 删除整个修订内容
-    quill.insertText(index, value.content, 'user');
-    quill.formatText(index, value.content.length, { color: false, 'newContent': false });
+    // 新增内容：去掉红色样式，保留内容
+    quill.formatText(index, length, 'newContent', false);
+    quill.formatText(index, length, { color: false });
   } else if (node.hasAttribute('data-deleted')) {
-    // 删除内容：直接移除
-    const value = JSON.parse(node.getAttribute('data-deleted'));
-    quill.deleteText(index, value.content.length); // 删除整个修订内容
+    // 删除内容：彻底删除
+    quill.deleteText(index, length);
   }
 }
 
@@ -1418,16 +1439,17 @@ function handleRejectRevision(node) {
   const blot = Quill.find(node);
   if (!blot) return;
   const index = quill.getIndex(blot);
+  const length = blot.length();
 
   if (node.hasAttribute('data-new')) {
-    // 新增内容：直接删除
-    const value = JSON.parse(node.getAttribute('data-new'));
-    quill.deleteText(index, value.content.length); // 删除全部修订内容
+    // 新增内容：彻底删除
+    quill.deleteText(index, length);
   } else if (node.hasAttribute('data-deleted')) {
-    // 删除内容：恢复原文
+    // 删除内容：还原为普通文本
     const value = JSON.parse(node.getAttribute('data-deleted'));
-    quill.deleteText(index, value.content.length); // 删除全部修订内容
-    quill.insertText(index, value.content);
+    const text = value.content; // 纯文本
+    quill.deleteText(index, length);
+    quill.insertText(index, text);
   }
 }
 
@@ -1800,5 +1822,11 @@ const getTextFromDelta = (delta, index, length) => {
 .revision-reject-btn:hover {
   background: #ffeaea;
   color: #c0392b;
+}
+
+.ql-deletedContent {
+  text-decoration: line-through;
+  color: red;
+  opacity: 1;
 }
 </style>

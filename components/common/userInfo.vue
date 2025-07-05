@@ -34,7 +34,7 @@
                         class="w-24 h-24 rounded-full ring-4 ring-primary ring-offset-base-100 ring-offset-2 overflow-hidden"
                     >
                         <img
-                            :src="userStore.avatar || '/avatar_1.webp'"
+                             :src="userInfo.avatar"
                             alt="用户头像"
                             class="w-full h-full object-cover"
                         />
@@ -176,9 +176,11 @@
 <script setup>
 import { ref, reactive, onMounted } from "vue";
 import { useUserStore } from "~/stores/user";
+import { useWorkspaceStore } from "~/stores/workspace";
 
 const userStore = useUserStore();
 const { $axios } = useNuxtApp();
+const userInfo = userStore.userInfo;
 
 // 定义事件
 const emit = defineEmits(["close"]);

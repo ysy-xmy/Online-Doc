@@ -267,9 +267,19 @@ onMounted(async () => {
 })
 
 // 打开文档
+const { $axios } = useNuxtApp();
 const openDocument = (id) => {
-  navigateTo(`/document/${id}`)
-}
+    $axios(`/api/documents/${id}`, {
+        method: "GET",
+    }).then((res) => {
+        //这个接口需要添加一个知识库ID
+        workspaceStore.workspaceId = res.data.workspace.id;
+        workspaceStore.currentWorkspace = res.data.workspace;
+        // console.log("res",res.data);
+        navigateTo(`/document/${res.data.id}`);
+    });
+    // navigateTo(`/document/${id}`)
+};
 
 // 刷新仪表板
 const refreshDashboard = async () => {

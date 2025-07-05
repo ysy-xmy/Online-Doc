@@ -19,20 +19,13 @@ import { useDocumentStore } from "@/stores/document";
 
 const route = useRoute();
 const documentId = route.params.id;
-const commentData = ref(null);
 const documentContent = ref("");
 const documentName = ref("未命名文档");
 
 const documentStore = useDocumentStore();
-const documentInfo = documentStore.documentInfo;
 const documentStoreAPI = useDocumentStoreAPI();
 
-const props = defineProps({
-  documentId: String,
-  onlineUsers: Array,
-});
-
-// 模拟获取文档内容的方法
+// 获取文档内容的方法
 const fetchDocumentContent = async () => {
   try {
         // 调用真实的API获取文档详情

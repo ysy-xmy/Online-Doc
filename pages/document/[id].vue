@@ -2,9 +2,9 @@
   <div
     class="h-full w-full flex flex-col overflow-y-auto dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-52"
   >
-    <!-- <WriteRead v-if="hasWritePermission"  />
-    <ReadOnlyViewer v-else /> -->
-<WriteRead  />
+    <WriteRead v-if="hasWritePermission" />
+    <ReadOnlyViewer v-else />
+
   </div>
 </template>
 
@@ -20,23 +20,10 @@ import ReadOnlyViewer from "./ReadOnlyViewer.vue";
 const route = useRoute();
 const userStore = useUserStore();
 const documentId = route.params.id;
-const currentUserId = userStore.userId;
 const hasWritePermission = ref(false);
-// 模拟在线用户数据（后面连接）
-const onlineUsers = ref([
-  {
-    id: 1,
-    name: "用户A",
-    color: "#007bff",
-    isLocal: true,
-  },
-  {
-    id: 2,
-    name: "用户B",
-    color: "#28a745",
-    isLocal: false,
-  },
-]);
+const username = userStore.getUserInfo().username;
+const currentUserId = userStore.getUserInfo().id;
+
 
 // 使用 definePageMeta 指定全局布局
 definePageMeta({
@@ -50,18 +37,19 @@ onMounted(() => {
 // 获取协作者权限
 const fetchCollaborators = async () => {
   try {
-    console.log("文档id:", documentId);
     // 获取文档协作者列表
     const response2 = await documentShareApi.getCollaborators(documentId);
-    console.log("协作者列表:", response2);
-    // 判断当前用户是否有读写权限
-    if (response2.data.collaborators.length === 0) {
-      hasWritePermission.value = false;
-      return;
-    }
-    hasWritePermission.value = response2.data.collaborators.some(
+    // 判断当前用户是否为文档创建者或有读写权限
+    const isCreator =
+      response2.data.document &&
+      response2.data.document.creator.username === username &&
+      response2.data.document.creator.id === currentUserId;
+    const hasEditorRole = response2.data.collaborators.some(
       (collab) => collab.user.id === currentUserId && collab.role === "EDITOR"
     );
+    console.log("当前用户是否为创建者:", isCreator);
+    console.log("当前用户是否在协作者列表:", hasEditorRole);
+    hasWritePermission.value = isCreator || hasEditorRole;
   } catch (error) {
     console.error("权限检查失败:", error);
     hasWritePermission.value = false;

@@ -450,6 +450,7 @@ const openDocument = (id) => {
     }).then((res) => {
         //这个接口需要添加一个知识库ID
         workspaceStore.workspaceId = res.data.workspace.id;
+        workspaceStore.currentWorkspace = res.data.workspace;
         // console.log("res",res.data);
         navigateTo(`/document/${res.data.id}`);
     });

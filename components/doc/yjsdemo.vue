@@ -125,7 +125,13 @@ const saveHistoricalVersion = async () => {
       contentJson
     });
     // 构建请求体
-    const requestBody = JSON.stringify({ content, contentJson });
+    //const requestBody = JSON.stringify({ content, contentJson });
+    const requestBody = JSON.stringify({
+      content,
+      contentJson,
+      "triggerType": "AUTO_SAVE", // 触发类型
+      "clientId": "web-123456" // 客户端 ID
+    });
     console.log('实际发送的请求体:', requestBody);
     // 构造API URL
     const apiUrl = `http://8.134.200.53:8080/api/documents/${documentId}/versions/auto-save`;

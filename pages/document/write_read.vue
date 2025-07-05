@@ -38,6 +38,7 @@
 
 <script setup>
 import { useDocumentStore } from "@/stores/document";
+import { useDocumentStore as useDocumentStoreAPI } from "@/stores/documentStore";
 import FloatingButton from "@/components/AI/FloatingButton.vue";
 import SummaryModal from "@/components/AI/SummaryModal.vue";
 
@@ -50,6 +51,7 @@ const handleClosePanel = () => {
 };
 
 const documentStore = useDocumentStore();
+const documentStoreAPI = useDocumentStoreAPI();
 const documentInfo = documentStore.documentInfo;
 
 // 使用 definePageMeta 指定全局布局
@@ -57,7 +59,7 @@ definePageMeta({
   layout: "fullscreen",
 });
 
-import { ref, provide } from 'vue'
+import { ref, provide } from "vue";
 
 const route = useRoute();
 const documentId = route.params.id;
@@ -87,9 +89,29 @@ const onlineUsers = ref([
 
 // 模拟获取文档内容的方法
 const fetchDocumentContent = async () => {
-  // 在实际应用中，这里应该是从后端获取文档内容
-  documentContent.value = `这是文档 ${documentId} 的内容`;
-  documentName.value = `文档 ${documentId}`;
+  try {
+      // 调用真实的API获取文档详情
+      const documentData = await documentStoreAPI.fetchDocumentById(
+          Number(documentId)
+      );
+
+      if (documentData) {
+          // 更新文档内容
+          documentContent.value =
+              documentData.content || `这是文档 ${documentId} 的内容`;
+          // 更新文档名称
+          documentName.value = documentData.title || `文档 ${documentId}`;
+          // 更新store中的文档名称
+          documentStore.updateDocumentName(
+              documentData.title || `文档 ${documentId}`
+          );
+      }
+  } catch (error) {
+      console.error("获取文档详情失败:", error);
+      // 如果API调用失败，使用默认值
+      documentContent.value = `这是文档 ${documentId} 的内容`;
+      documentName.value = `文档 ${documentId}`;
+  }
 };
 
 const openSidebar = (data) => {
@@ -130,14 +152,14 @@ onMounted(() => {
 
 // 保存文档的方法
 const saveDocument = (name) => {
-    documentInfo.value = name;
-    // 在实际应用中，这里应该调用后端保存接口
-    console.log("保存文档:", name, documentContent.value);
+  documentInfo.value = name;
+  // 在实际应用中，这里应该调用后端保存接口
+  console.log("保存文档:", name, documentContent.value);
 
   // 更新保存状态
   if (menuRef.value) {
-    menuRef.value.setSaveStatus("已保存");
-    menuRef.value.setLastSaved(new Date());
+      menuRef.value.setSaveStatus("已保存");
+      menuRef.value.setLastSaved(new Date());
   }
 };
 </script>

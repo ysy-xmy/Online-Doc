@@ -143,10 +143,36 @@ const debouncedRestoreSaveStatus = debounce(function () {
     }, 100);
 }, 500);
 
+const { $axios } = useNuxtApp();
+const router = useRouter();
+
+// 防抖版本的保存文档标题函数
+const debouncedSaveDocumentTitle = debounce((data) => {
+    console.log(99999999);
+
+    $axios(`api/documents/${router.currentRoute.value.params.id}`, {
+        method: "PUT",
+        body: data,
+    }).then((res) => {
+        documentStore.updateDocumentName(res.data.title);
+    });
+}, 1000); // 1秒防抖
+
+const saveDocumentTitle = (data) => {
+    debouncedSaveDocumentTitle(data);
+};
 // 自动保存功能（防抖版本）
 const autoSave = () => {
-    // 触发保存事件
-    emit("save", documentInfo.name);
+    // console.log("newName", documentInfo.name);
+    // console.log("documentInfo.id", );
+    const data = {
+        title: documentInfo.name,
+        content: "",
+        contentJson: "新JSON内容",
+        status: "PUBLISHED",
+    };
+
+    saveDocumentTitle(data);
 
     // 使用 store 的防抖自动保存方法
     documentInfo.isSaving = true;

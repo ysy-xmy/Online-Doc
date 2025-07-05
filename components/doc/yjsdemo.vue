@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, nextTick, computed, watch } from "vue";
 import { useDocumentStore } from "@/stores/document";
 import _ from "lodash";
+import { useRoute } from "vue-router";
 
 import "highlight.js/styles/atom-one-dark.min.css";
 import hljs from "highlight.js/lib/common";
@@ -9,6 +10,7 @@ import { useUserStore } from "@/stores/user";
 import { useDocumentStore as useDocStore } from "@/stores/document";
 const userStore = useUserStore();
 const userInfo = computed(() => userStore.userInfo);
+const route = useRoute();
 
 // 接收父组件传递的只读状态
 const props = defineProps({
@@ -34,6 +36,14 @@ const localUser = ref({
   timestamp: Date.now(),
   cursorPosition: null,
   cursorLength: 0,
+});
+
+// 房间信息
+const roomInfo = ref({
+  roomName: "",
+  activeUsers: 0,
+  lastUpdate: null,
+  hasDocument: false,
 });
 
 // 添加 userSelectionRange 变量
@@ -101,14 +111,19 @@ const renderRemoteCursors = () => {
   const editorElement = document.querySelector(".ql-editor");
   if (!editorContainer || !editorElement) return;
 
-  // 清除之前的光标
-  const existingCustomCursors = document.querySelectorAll(".remote-cursor");
-  existingCustomCursors.forEach((cursor) => cursor.remove());
+  // 清除之前的光标和选区
+  const existingElements = document.querySelectorAll(
+    ".remote-cursor, .remote-selection"
+  );
+  existingElements.forEach((element) => element.remove());
+
+  // 清理无效选区
+  cleanupInvalidSelections();
 
   const allStates = awareness.getStates();
 
-  // 使用 Map 存储每个用户的最后一个光标状态
-  const userCursorMap = new Map();
+  // 使用 Map 存储每个用户的最后一个状态
+  const userStateMap = new Map();
 
   const users = Array.from(allStates.entries()).filter(
     ([clientID, state]) =>
@@ -126,58 +141,103 @@ const renderRemoteCursors = () => {
     }
   });
 
-  // 渲染去重后的用户光标
-  Array.from(userCursorMap.values()).forEach(({ clientID, state }) => {
+  // 渲染去重后的用户光标和选区
+  Array.from(userStateMap.values()).forEach(({ clientID, state }) => {
     try {
-      // 获取光标位置的精确边界，增加容错处理
-      let bounds;
-      try {
-        bounds = quill.getBounds(state.user.cursorPosition);
-      } catch (boundsError) {
-        console.warn("获取光标边界失败:", boundsError);
-        return; // 跳过此用户的光标渲染
+      const user = state.user;
+      const selection = state.selection;
+
+      // 渲染光标
+      if (user.cursorPosition !== undefined && user.cursorPosition !== null) {
+        let bounds;
+        try {
+          bounds = quill.getBounds(user.cursorPosition);
+        } catch (boundsError) {
+          console.warn("获取光标边界失败:", boundsError);
+          return;
+        }
+
+        if (!bounds || bounds.left === undefined || bounds.top === undefined) {
+          console.warn("无效的光标边界:", bounds);
+          return;
+        }
+
+        // 考虑编辑器的滚动偏移
+        const scrollTop = editorElement.scrollTop;
+        const scrollLeft = editorElement.scrollLeft;
+
+        const cursorElement = document.createElement("div");
+        cursorElement.classList.add("remote-cursor");
+        cursorElement.classList.add(`remote-cursor-${clientID}`);
+        cursorElement.style.position = "absolute";
+        cursorElement.style.left = `${bounds.left - scrollLeft}px`;
+        cursorElement.style.top = `${bounds.top - scrollTop}px`;
+        cursorElement.style.backgroundColor = user.color || "blue";
+        cursorElement.style.width = "2px";
+        cursorElement.style.height = `${bounds.height}px`;
+        cursorElement.style.zIndex = "1000";
+        cursorElement.style.pointerEvents = "none";
+
+        // 创建悬浮提示
+        const tooltipElement = document.createElement("div");
+        tooltipElement.classList.add("remote-cursor-tooltip");
+        tooltipElement.textContent = user.name || "匿名用户";
+        tooltipElement.style.position = "absolute";
+        tooltipElement.style.left = "12px";
+        tooltipElement.style.top = "15px";
+        tooltipElement.style.backgroundColor = user.color || "blue";
+        tooltipElement.style.color = "white";
+        tooltipElement.style.fontSize = "10px";
+        tooltipElement.style.padding = "2px";
+        tooltipElement.style.borderRadius = "3px";
+
+        cursorElement.appendChild(tooltipElement);
+        editorContainer.appendChild(cursorElement);
       }
 
-      // 额外检查边界的有效性
-      if (!bounds || bounds.left === undefined || bounds.top === undefined) {
-        console.warn("无效的光标边界:", bounds);
-        return;
+      // 渲染选区
+      if (selection && selection.index !== undefined && selection.length > 0) {
+        console.log("渲染选区:", selection, "用户:", user.name);
+
+        let bounds;
+        try {
+          bounds = quill.getBounds(selection.index, selection.length);
+        } catch (boundsError) {
+          console.warn("获取选区边界失败:", boundsError);
+          return;
+        }
+
+        if (
+          !bounds ||
+          bounds.left === undefined ||
+          bounds.top === undefined ||
+          bounds.width <= 0 ||
+          bounds.height <= 0
+        ) {
+          console.warn("无效的选区边界:", bounds);
+          return;
+        }
+
+        // 考虑编辑器的滚动偏移
+        const scrollTop = editorElement.scrollTop;
+        const scrollLeft = editorElement.scrollLeft;
+
+        const selectionElement = document.createElement("div");
+        selectionElement.classList.add("remote-selection");
+        selectionElement.classList.add(`remote-selection-${clientID}`);
+        selectionElement.style.position = "absolute";
+        selectionElement.style.left = `${bounds.left - scrollLeft}px`;
+        selectionElement.style.top = `${bounds.top - scrollTop}px`;
+        selectionElement.style.width = `${bounds.width}px`;
+        selectionElement.style.height = `${bounds.height}px`;
+        selectionElement.style.backgroundColor = `${user.color || "blue"}20`; // 半透明背景
+        selectionElement.style.border = `2px solid ${user.color || "blue"}`;
+        selectionElement.style.borderRadius = "2px";
+        selectionElement.style.zIndex = "999";
+        selectionElement.style.pointerEvents = "none";
+
+        editorContainer.appendChild(selectionElement);
       }
-
-      // 考虑编辑器的滚动偏移
-      const scrollTop = editorElement.scrollTop;
-      const scrollLeft = editorElement.scrollLeft;
-
-      const cursorElement = document.createElement("div");
-      cursorElement.classList.add("remote-cursor");
-      cursorElement.classList.add(`remote-cursor-${clientID}`);
-      cursorElement.style.position = "absolute";
-
-      // 使用相对定位，考虑滚动
-      cursorElement.style.left = `${bounds.left - scrollLeft}px`;
-      cursorElement.style.top = `${bounds.top - scrollTop}px`;
-
-      cursorElement.style.backgroundColor = state.user.color || "blue";
-      cursorElement.style.width = "2px";
-      cursorElement.style.height = `${bounds.height}px`;
-      cursorElement.style.zIndex = "1000";
-      cursorElement.style.pointerEvents = "none";
-
-      // 创建悬浮提示
-      const tooltipElement = document.createElement("div");
-      tooltipElement.classList.add("remote-cursor-tooltip");
-      tooltipElement.textContent = state.user.name || "匿名用户";
-      tooltipElement.style.position = "absolute";
-      tooltipElement.style.left = "12px";
-      tooltipElement.style.top = "15px";
-      tooltipElement.style.backgroundColor = state.user.color || "blue";
-      tooltipElement.style.color = "white";
-      tooltipElement.style.fontSize = "10px";
-      tooltipElement.style.padding = "2px";
-      tooltipElement.style.borderRadius = "3px";
-
-      cursorElement.appendChild(tooltipElement);
-      editorContainer.appendChild(cursorElement);
     } catch (error) {
       console.error("渲染光标时出错:", error, "用户状态:", state);
     }
@@ -226,6 +286,32 @@ const debouncedWindowResizeCursors = debounce(() => {
   }
 }, 200);
 
+// 清理无效选区的函数
+const cleanupInvalidSelections = () => {
+  const existingSelections = document.querySelectorAll(".remote-selection");
+  existingSelections.forEach((selectionElement) => {
+    try {
+      // 检查选区是否仍然有效
+      const clientID = selectionElement.classList.contains("remote-selection-")
+        ? selectionElement.className.match(/remote-selection-(\d+)/)?.[1]
+        : null;
+
+      if (clientID) {
+        const allStates = awareness.getStates();
+        const state = allStates.get(parseInt(clientID));
+
+        if (!state || !state.selection || state.selection.length === 0) {
+          selectionElement.remove();
+          console.log("清理无效选区:", clientID);
+        }
+      }
+    } catch (error) {
+      console.warn("清理选区时出错:", error);
+      selectionElement.remove();
+    }
+  });
+};
+
 // 初始化编辑器和协同功能
 const initCollaborativeEditor = async () => {
   if (!isClient || !quillEditor.value) return;
@@ -251,9 +337,14 @@ const initCollaborativeEditor = async () => {
 
       let commentData = null;
       if (typeof value === "object") {
-        commentData = value.node
-          ? JSON.parse(value.node.getAttribute("data-comment"))
-          : value;
+        // 如果是完整的对象，包括 node 属性
+        if (value.node) {
+          // 复制单一属性
+          commentData = JSON.parse(value.node.getAttribute("data-comment"));
+        } else {
+          // 直接使用传入的对象
+          commentData = value;
+        }
       }
 
       // 确保有默认值
@@ -494,17 +585,31 @@ const initCollaborativeEditor = async () => {
   ytext = ydoc.getText("text");
 
   // 配置 WebSocket 提供者（发起请求）
+  // 使用路由ID作为房间名称，确保房间隔离
+  const roomName = route.params.id || "default-room";
+
+  // 验证房间名格式
+  if (!/^[a-zA-Z0-9_-]+$/.test(roomName)) {
+    console.error("无效的房间名:", roomName);
+    alert("无效的房间名");
+    return;
+  }
+
   provider = new websocketModule.value.WebsocketProvider(
-    "ws://8.134.200.53:1234",
     // "ws://8.134.200.53:1234",
-    "my-roomname",
+    "ws://8.134.200.53:8080",
+    // "ws://localhost:1234",
+    roomName,
     ydoc,
     {
       reconnect: true,
       reconnectTimeout: 5000,
       maxBackoff: 30000,
       params: {
-        username: `用户_${Math.random().toString(36).substr(2, 9)}`,
+        username:
+          localUser.value.name ||
+          `用户_${Math.random().toString(36).substr(2, 9)}`,
+        room: roomName, // 明确传递房间名
       },
     }
   );
@@ -518,6 +623,20 @@ const initCollaborativeEditor = async () => {
 
       const selection = quill.getSelection();
       console.log("当前选择:", selection);
+
+      // 检测删除操作
+      const hasDeleteOperation = event.changes.delta.some(
+        (change) => change.delete !== undefined
+      );
+
+      // 如果有删除操作，清除所有远程选区
+      if (hasDeleteOperation) {
+        console.log("检测到删除操作，清除远程选区");
+        // 清除所有远程选区
+        const existingSelections =
+          document.querySelectorAll(".remote-selection");
+        existingSelections.forEach((element) => element.remove());
+      }
 
       // 判断是否为换行符插入
       const isNewlineInsertion = event.changes.delta.some(
@@ -592,8 +711,27 @@ const initCollaborativeEditor = async () => {
     });
   }
 
+  // 文本变化监听
+  quill.on("text-change", (delta, oldDelta, source) => {
+    // 检测删除操作
+    const hasDeleteOperation = delta.ops.some((op) => op.delete !== undefined);
+
+    if (hasDeleteOperation) {
+      console.log("检测到文本删除操作，清除远程选区");
+      // 清除所有远程选区
+      const existingSelections = document.querySelectorAll(".remote-selection");
+      existingSelections.forEach((element) => element.remove());
+    }
+  });
+
   // 光标选择变化监听
   quill.on("selection-change", (range, oldRange, source) => {
+    //打印
+    if (source === "user") {
+      //这里是用户选择
+      awareness.setLocalStateField("selection", range);
+    }
+
     // 如果当前 range 为 null，尝试使用上一次的 range
     if (!range && userSelectionRange) {
       range = userSelectionRange;
@@ -608,6 +746,9 @@ const initCollaborativeEditor = async () => {
 
       // 设置本地用户状态
       awareness.setLocalStateField("user", updatedUser);
+
+      // 同时设置selection状态
+      awareness.setLocalStateField("selection", range);
 
       //这里是本地的光标渲染
       debouncedRenderRemoteCursors();
@@ -635,6 +776,9 @@ const initCollaborativeEditor = async () => {
         }
       }
     } else {
+      // 当没有选区时，清除selection状态
+      awareness.setLocalStateField("selection", null);
+
       // 当没有选区时，确保清除之前的背景色
       if (userSelectionRange) {
         try {
@@ -651,6 +795,19 @@ const initCollaborativeEditor = async () => {
   // Awareness 变化监听
   awareness.on("change", (changes) => {
     const allStates = awareness.getStates();
+
+    allStates.forEach((state, clientID) => {
+      if (clientID === ydoc.clientID) return; // 跳过自己
+      const user = state.user;
+      const selection = state.selection;
+
+      // 如果有selection数据或光标数据，渲染远程用户的光标+选区
+      if (selection || (user && user.cursorPosition !== undefined)) {
+        console.log("远程用户状态:", { user, selection });
+        // 显示远程用户的光标+选区
+        debouncedRenderRemoteCursors();
+      }
+    });
 
     // 详细打印所有用户状态和光标位置
     const users = Array.from(allStates.entries()).map(([clientID, state]) => ({
@@ -712,6 +869,7 @@ const initCollaborativeEditor = async () => {
   provider.on("connect", () => {
     if (props.isReadOnly) return;
 
+    console.log(`已连接到房间: ${roomName}`);
     // 设置本地用户状态
     if (awareness) {
       awareness.setLocalStateField("user", {
@@ -724,24 +882,51 @@ const initCollaborativeEditor = async () => {
       });
 
       // 获取并显示当前用户信息
-      setTimeout(() => {
-        const username = usersInfo.name;
-        const clientID = usersInfo.clientID;
-        console.log("连接建立后 - 当前用户名:", username);
-        console.log("连接建立后 - 当前客户端ID:", clientID);
-      }, 1000);
+      // setTimeout(() => {
+      //     const username = usersInfo.name;
+      //     const clientID = usersInfo.clientID;
+      //     // console.log("连接建立后 - 当前用户名:", username);
+      //     // console.log("连接建立后 - 当前客户端ID:", clientID);
+      //     // console.log("当前房间:", roomName);
+      // }, 1000);
     }
   });
 
   // 监听连接断开
   provider.on("disconnect", () => {
     if (props.isReadOnly) return;
-    console.log("🔗 WebSocket 连接已断开");
+    console.log(`🔗 WebSocket 连接已断开 (房间: ${roomName})`);
   });
-  // 监听连接断开
+
+  // 监听 WebSocket 消息
   provider.on("message", (event) => {
     if (props.isReadOnly) return;
-    console.log("🔗 WebSocket 消息:", event);
+    console.log(`🔗 WebSocket 消息 (房间: ${roomName}):`, event);
+
+    // 处理房间信息更新
+    if (event.data && typeof event.data === "string") {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === "roomInfo" || message.type === "roomStatus") {
+          roomInfo.value = message.data;
+          console.log("房间信息更新:", roomInfo.value);
+        }
+      } catch (error) {
+        // 忽略非JSON消息
+      }
+    }
+  });
+
+  // 监听房间状态变化
+  provider.on("status", (event) => {
+    console.log(`🔗 连接状态变化 (房间: ${roomName}):`, event);
+
+    // 根据连接状态更新文档状态
+    if (event.status === "connected") {
+      documentInfo.saveStatus = "已连接";
+    } else if (event.status === "disconnected") {
+      documentInfo.saveStatus = "连接断开";
+    }
   });
 
   // 添加编辑器滚动监听器
@@ -1110,6 +1295,12 @@ onUnmounted(() => {
   // 移除窗口大小变化监听器
   window.removeEventListener("resize", debouncedWindowResizeCursors);
 
+  // 清理所有远程光标和选区
+  const existingElements = document.querySelectorAll(
+    ".remote-cursor, .remote-selection"
+  );
+  existingElements.forEach((element) => element.remove());
+
   // 清空用户信息
   documentStore.$patch({
     usersInfo: {
@@ -1273,10 +1464,25 @@ defineExpose({
 
 .remote-cursor-tooltip {
   position: absolute;
-  padding: 2px 5px;
-  border-radius: 3px;
+  padding: 1px 4px;
+  border-radius: 2px;
   color: white;
   font-size: 10px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.remote-selection {
+  position: absolute;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.remote-selection-label {
+  position: absolute;
+  white-space: nowrap;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .inline-comment-marker {

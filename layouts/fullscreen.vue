@@ -139,7 +139,7 @@ const workspaceStore = useWorkspaceStore();
 const documents = ref([]);
 
 // 获取知识库名称
-const workspaceName = workspaceStore.currentWorkspace.name
+const workspaceName = workspaceStore.currentWorkspace? workspaceStore.currentWorkspace.name:'未命名知识库'
 
 //打印知识库对应的文档列表
 // console.log("知识库对应的文档列表:", documents);

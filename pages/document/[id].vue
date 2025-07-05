@@ -2,8 +2,8 @@
   <div
     class="h-full w-full flex flex-col overflow-y-auto dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-52"
   >
-    <WriteRead v-if="hasWritePermission"  />
-    <ReadOnlyViewer v-else />
+    <WriteRead   />
+    <!-- <ReadOnlyViewer v-else /> -->
 
   </div>
 </template>

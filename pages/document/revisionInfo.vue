@@ -1,50 +1,54 @@
 <template>
-    <div class="h-full w-84 p-4">
-        <div class="space-y-2">
-            <div 
-                v-for="(item, index) in revisionList" 
-                :key="index" 
-                class="card bg-base-100 shadow-sm border"
-            >
-                <div class="card-body p-3">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center space-x-1">
-                            <span 
-                                class="badge badge-xs" 
-                                :class="{
-                                    'badge-success': item.type === 'add',
-                                    'badge-error': item.type === 'delete'
-                                }"
-                            >
-                                {{ item.type === 'add' ? '新' : '删' }}
-                            </span>
-                            <span class="text-xs text-gray-500">
-                                {{ formatShortTimestamp(item.timestamp) }}
-                            </span>
-                        </div>
-                        <span class="text-xs text-gray-600">
-                            ID:{{ item.userId }}
+    <div class="h-full w-84 p-4 relative revision-container">
+        <!-- 添加一个调试提示 -->
+        <div v-if="sortedRevisionList.length === 0" class="text-center text-gray-500 mt-10">
+            暂无修订信息
+        </div>
+
+        <div 
+            v-for="(item, index) in sortedRevisionList" 
+            :key="index" 
+            class="card absolute bg-base-100 shadow-sm border revision-item"
+            :style="getRevisionItemStyle(item)"
+        >
+            <div class="card-body p-3">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-1">
+                        <span 
+                            class="badge badge-xs" 
+                            :class="{
+                                'badge-success': item.type === 'add',
+                                'badge-error': item.type === 'delete'
+                            }"
+                        >
+                            {{ item.type === 'add' ? '新' : '删' }}
+                        </span>
+                        <span class="text-xs text-gray-500">
+                            {{ formatShortTimestamp(item.timestamp) }}
                         </span>
                     </div>
-                    
-                    <div className="mt-1">
-                        <p className="text-sm truncate">{{ item.content }}</p>
-                    </div>
-                    
-                    <div className="card-actions justify-end mt-1">
-                        <button 
-                            @click="applyRevision(item)" 
-                            className="btn btn-xs btn-success"
-                        >
-                            应用
-                        </button>
-                        <button 
-                            @click="rejectRevision(item)" 
-                            className="btn btn-xs btn-error"
-                        >
-                            拒绝
-                        </button>
-                    </div>
+                    <span class="text-xs text-gray-600">
+                        ID:{{ item.userId }}
+                    </span>
+                </div>
+                
+                <div className="mt-1">
+                    <p className="text-sm truncate">{{ item.content }}</p>
+                </div>
+                
+                <div className="card-actions justify-end mt-1">
+                    <button 
+                        @click="applyRevision(item)" 
+                        className="btn btn-xs btn-success"
+                    >
+                        应用
+                    </button>
+                    <button 
+                        @click="rejectRevision(item)" 
+                        className="btn btn-xs btn-error"
+                    >
+                        拒绝
+                    </button>
                 </div>
             </div>
         </div>
@@ -89,31 +93,35 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 
-const revisionList = ref([
-    {
-        "type": "add",
-        "content": "1",
-        "timestamp": 1751770077697,
-        "userId": 7,
-        "hint": "新增：1"
-    },
-    {
-        "type": "delete",
-        "content": "111",
-        "timestamp": 1751770068674,
-        "userId": 7,
-        "hint": "删除：111"
-    },
-    {
-        "type": "delete",
-        "content": "11111",
-        "timestamp": 1751770064455,
-        "userId": 7,
-        "hint": "删除：11111"
+// 定义 props 接收外部传入的修订列表
+const props = defineProps({
+    revisions: {
+        type: Array,
+        default: () => []
     }
-])
+})
+
+// 使用 props 中的修订列表
+const revisionList = ref([])
+
+// 监听外部传入的修订列表变化
+watch(() => props.revisions, (newRevisions) => {
+    // 如果新的修订列表不为空，更新本地列表
+    if (newRevisions && newRevisions.length > 0) {
+        revisionList.value = newRevisions.map(revision => ({
+            ...revision,
+            // 如果没有 yPosition，可以设置一个默认值
+            yPosition: revision.yPosition || 0
+        }))
+    }
+}, { immediate: true })
+
+// 按 Y 轴坐标排序的修订列表
+const sortedRevisionList = computed(() => {
+    return [...revisionList.value].sort((a, b) => (a.yPosition || 0) - (b.yPosition || 0))
+})
 
 // 当前正在处理的修订项
 const currentRevision = ref(null)
@@ -121,6 +129,17 @@ const currentRevision = ref(null)
 const formatShortTimestamp = (timestamp) => {
     const date = new Date(timestamp)
     return `${date.getMonth() + 1}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}`
+}
+
+// 获取修订项的样式，基于 Y 轴坐标
+const getRevisionItemStyle = (item) => {
+    return {
+        top: `${item.yPosition}px`,
+        left: '100%', // 靠右侧显示
+        transform: 'translateY(-50%)', // 垂直居中
+        marginLeft: '10px', // 与编辑器保持一定距离
+        width: '250px' // 固定宽度
+    }
 }
 
 const applyRevision = (item) => {
@@ -156,8 +175,36 @@ const confirmReject = () => {
         currentRevision.value = null
     }
 }
+
+// 添加一个调试输出，帮助定位问题
+const debugInfo = computed(() => ({
+    propsRevisions: props.revisions,
+    localRevisionList: revisionList.value,
+    sortedList: sortedRevisionList.value
+}))
+
+// 监听调试信息变化
+watch(debugInfo, (info) => {
+    console.log('修订信息调试:', info)
+}, { immediate: true })
 </script>
 
 <style scoped>
-/* 可以添加额外的自定义样式 */
+.revision-container {
+    position: relative;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.revision-item {
+    position: absolute;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.revision-item:hover {
+    z-index: 20;
+    transform: scale(1.02) translateY(-50%);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
 </style>

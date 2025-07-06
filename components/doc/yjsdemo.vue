@@ -58,7 +58,10 @@ const currentComment = ref(null);
 const documentStore = useDocStore();
 const documentInfo = useDocStore().documentInfo;
 const usersInfo = useDocStore().usersInfo;
-const emits = defineEmits(["openCommentPanel"]);
+const emits = defineEmits([
+  "openCommentPanel", 
+  "updateRevision"  // 新增这一行
+]);
 const revisionMode = ref(false);
 let oldDocumentState;
 
@@ -1476,6 +1479,10 @@ async function handleMarkAsDeleted(index, length) {
     found.setAttribute('data-deleted', JSON.stringify(data));
     found.dataset.deleted = JSON.stringify(data);
     
+    // 触发 updateRevision 事件，传递完整的修订数组
+    const revisions = extractRevisions();
+    emits('updateRevision', revisions);
+    
     // 触发 Yjs 更新
     try {
       const delta = quill.getContents();
@@ -1578,6 +1585,10 @@ const handleAddition = (op, index) => {
     
     found.setAttribute('data-new', JSON.stringify(newContentData));
     found.dataset.new = JSON.stringify(newContentData);
+    
+    // 触发 updateRevision 事件，传递完整的修订数组
+    const revisions = extractRevisions();
+    emits('updateRevision', revisions);
   }
 
   // 触发 Yjs 更新
@@ -1596,27 +1607,48 @@ const handleAddition = (op, index) => {
 };
 
 const applyRevision = () => {
-  // 只处理修订Blot，不动评论Blot
+  const revisions = [];
   const editor = quill.root;
+
   // 处理新增内容
-  Array.from(editor.querySelectorAll('span[data-new]')).forEach(node => {
+  Array.from(editor.querySelectorAll('[data-new]')).forEach(node => {
     const value = JSON.parse(node.getAttribute('data-new'));
-    const index = quill.getIndex(node);
-    quill.deleteText(index, 1);
-    quill.insertText(index, value.content, 'user');
-    quill.formatText(index, value.content.length, { color: false, 'newContent': false });
+    revisions.push(value);
   });
+
   // 处理删除内容
-  Array.from(editor.querySelectorAll('s[data-deleted]')).forEach(node => {
-    const index = quill.getIndex(node);
-    quill.deleteText(index, 1);
+  Array.from(editor.querySelectorAll('[data-deleted]')).forEach(node => {
+    const value = JSON.parse(node.getAttribute('data-deleted'));
+    revisions.push(value);
   });
+
+  // 触发 updateRevision 事件，传递修订数组
+  emits('updateRevision', revisions);
+  
   setRevisionMode(false);
 };
 
 const cancelRevision = () => {
+  const revisions = [];
+  const editor = quill.root;
+
+  // 处理新增内容
+  Array.from(editor.querySelectorAll('[data-new]')).forEach(node => {
+    const value = JSON.parse(node.getAttribute('data-new'));
+    revisions.push(value);
+  });
+
+  // 处理删除内容
+  Array.from(editor.querySelectorAll('[data-deleted]')).forEach(node => {
+    const value = JSON.parse(node.getAttribute('data-deleted'));
+    revisions.push(value);
+  });
+
   // 恢复原始文档状态
   quill.setContents(oldDocumentState);
+  
+  // 触发 updateRevision 事件，传递修订数组
+  emits('updateRevision', revisions);
   
   // 重置修订模式
   setRevisionMode(false);
@@ -1739,12 +1771,21 @@ function handleApplyRevision(node) {
   const index = quill.getIndex(blot);
   const length = blot.length();
 
+  let revisionData;
   if (node.getAttribute('data-new') !== null) {
+    revisionData = JSON.parse(node.getAttribute('data-new'));
     quill.formatText(index, length, 'newContent', false);
     quill.formatText(index, length, { color: false });
   } else if (node.getAttribute('data-deleted') !== null) {
+    revisionData = JSON.parse(node.getAttribute('data-deleted'));
     quill.deleteText(index, length);
   }
+
+  // 获取完整的修订信息数组
+  const revisions = extractRevisions();
+
+  // 触发 updateRevision 事件，传递完整的修订数组
+  emits('updateRevision', revisions);
 }
 
 function handleRejectRevision(node) {
@@ -1754,15 +1795,17 @@ function handleRejectRevision(node) {
   const index = quill.getIndex(blot);
   const length = blot.length();
 
+  let revisionData;
   if (node.getAttribute('data-new') !== null) {
+    revisionData = JSON.parse(node.getAttribute('data-new'));
     // 对于新增内容，直接删除
     quill.deleteText(index, length, 'silent');
   } else if (node.getAttribute('data-deleted') !== null) {
-    const value = JSON.parse(
+    revisionData = JSON.parse(
       node.getAttribute('data-deleted') || 
       node.dataset.deleted
     );
-    const text = value.content;
+    const text = revisionData.content;
     
     // 删除删除标记
     quill.deleteText(index, length, 'silent');
@@ -1770,6 +1813,12 @@ function handleRejectRevision(node) {
     // 插入原始文本，使用 'silent' 源以避免触发修订
     quill.insertText(index, text, { color: false }, 'silent');
   }
+
+  // 获取完整的修订信息数组
+  const revisions = extractRevisions();
+
+  // 触发 updateRevision 事件，传递完整的修订数组
+  emits('updateRevision', revisions);
 
   // 触发 Yjs 更新
   try {

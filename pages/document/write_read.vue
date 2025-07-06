@@ -11,7 +11,8 @@
     <Doc-yjsdemo 
       ref="yjsdemoRef"
       :isReadOnly="false"
-      @openCommentPanel="openSidebar" 
+      @openCommentPanel="openSidebar"
+      @updateRevision="handleRevisionUpdate"
     />
 
     <!-- 文档侧边栏 -->
@@ -50,7 +51,9 @@ const startSummary = () => {
 const handleClosePanel = () => {
   isAISummaryVisible.value = false;
 };
-
+const updateRevision = ()=>{
+  
+}
 const documentStore = useDocumentStore();
 const documentInfo = documentStore.documentInfo;
 const documentStoreAPI = useDocumentStoreAPI();
@@ -160,6 +163,15 @@ const handleRevisionModeToggle = (mode) => {
     yjsdemoRef.value.setRevisionMode(mode);
   }
 };
+
+const handleRevisionUpdate = (revisions) => {
+  console.log('修订更新:', revisions);
+  // 每个 revision 都是完整的原始修订对象
+  revisions.forEach(revision => {
+    console.log(`类型: ${revision.type}, 内容: ${revision.content}, 操作: ${revision.action}`);
+    // 可以进行进一步的处理
+  });
+}
 
 onMounted(() => {
   fetchDocumentContent();

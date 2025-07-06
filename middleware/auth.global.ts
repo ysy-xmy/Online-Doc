@@ -5,12 +5,12 @@ export default defineNuxtRouteMiddleware((to, from) => {
     const token = useCookie("token");
 
     // 如果访问登录页面，不需要检查token
-    if (to.path === "/Login" || to.path === "/Login/register") {
+    if (to.path==="/Home"|| to.path === "/Login" || to.path === "/Login/register") {
         return;
     }
 
     // 如果没有token，重定向到登录页面
     if (!token.value) {
-        return navigateTo("/Login");
+        return navigateTo("/Home");
     }
 });

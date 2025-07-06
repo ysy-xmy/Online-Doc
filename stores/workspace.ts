@@ -6,6 +6,7 @@ interface WorkspaceState {
   currentWorkspace: WorkspaceDTO | null
   loading: boolean
   error: string | null
+  workspaceId: number
   pagination: {
     total: number
     page: number
@@ -19,6 +20,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     currentWorkspace: null,
     loading: false,
     error: null,
+    workspaceId: 0,
     pagination: {
       total: 0,
       page: 0,
@@ -228,6 +230,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.currentWorkspace = null
       this.loading = false
       this.error = null
+      this.workspaceId = 0
       this.pagination = {
         total: 0,
         page: 0,

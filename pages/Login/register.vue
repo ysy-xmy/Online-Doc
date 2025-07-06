@@ -140,7 +140,7 @@ const password = ref("");
 const confirmPassword = ref("");
 const selectedAvatar = ref(1); // 默认选择第一个头像
 const selectedAvatarUrl = ref(
-    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaorZgMPyu8LoRZ1DDdzcZR8DVWByDJI2xibafmUVeSSyIgZiboNWXMP9pun0OpmiciakV0ia6oyIcA27icLw/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1"
+    "https://obscloud.ulearning.cn/resources/web/17514210197846819.jpeg"
 ); // 默认选择第一个
 const showSuccessAlert = ref(false); // 控制成功提示框显示
 
@@ -158,14 +158,14 @@ const avatars = ref([
 
 // 头像URL列表
 const urlList = ref([
-    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaorZgMPyu8LoRZ1DDdzcZR8DVWByDJI2xibafmUVeSSyIgZiboNWXMP9pun0OpmiciakV0ia6oyIcA27icLw/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1",
-    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaorZgMPyu8LoRZ1DDdzcZR8DCwKbZ5vzibiaDa6pS2tc5fZVfZiczNs245PVeWKmDadDCpD8cqKKXxicaA/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1",
-    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaopElicwU5r6yV2bFjYqDlGXRfPnibPnwnCR4uppdwhKKny9Tqiako19hiaBhQbfdHfYU7icAibbYj9s293g/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp",
-    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaopElicwU5r6yV2bFjYqDlGXRDbOI8gibWN5Z66Xpcby8vIv333c0xIv9v4rrRPHxSa8kU0mpyBxy6YA/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp",
-    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaop1ibyyyOs6FmBMIFicXsMajLHkYIldFK2cZchD0yHNsnmN0RjEBPobGjG873p3bibXuV3CMlbjFHl9A/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1",
-    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaop1ibyyyOs6FmBMIFicXsMajLQwxafe0IKOGpRXxoTPiaosDbkvgKvWoWrH5Dwnic3YU6DvawnCsPDJKQ/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp",
-    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaopElicwU5r6yV2bFjYqDlGXRD0XQBENcrNiatulyvRVg9OxanBThmyEkCn37KkVFPl2w4oryafcFCXA/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&wx_lazy=1&tp=webp",
-    "https://mmbiz.qpic.cn/sz_mmbiz_jpg/QPgL9rRCiaookYhJGrEcjMTlgiafy5bg7PR2s0cl1jCyvVryic7fAPrcRwGDqHnVKowNic57ibwcL3enhjHa1GZleBw/640?wx_fmt=jpeg&from=appmsg&wxfrom=5&tp=webp&wx_lazy=1",
+    "https://obscloud.ulearning.cn/resources/web/17514210197846819.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197888014.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197868973.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197805397.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197835722.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197797516.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197818342.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197782512.jpeg",
 ]);
 
 // 选择头像函数(按ID选中URL)
@@ -192,20 +192,21 @@ const handleLogin = (data: any) => {
             return res.json();
         })
         .then((res) => {
-           if (res.code === "SUCCESS") {
+            if (res.code === "SUCCESS") {
                 // 存储token(用Cookie)
                 useCookie("token", {
                     maxAge: res.data.expiresIn, // 设置过期时间(1天)
                 }).value = res.data.token;
 
                 //储存用户信息到store
-                 userStore.setUserInfo({
-                    id: res.data.user.id,
-                    username: res.data.user.username,
-                    nickname: res.data.user.nickname,
-                    avatar: res.data.user.avatar,
-                    email: res.data.user.email || '', // 添加 email 字段，如果不存在则使用空字符串
-                    color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+                userStore.setUserInfo({
+                    
+                        id: res.data.user.id, // 用户ID
+                        username: res.data.user.username,
+                        nickname: res.data.user.nickname,
+                        avatar: res.data.user.avatar,
+                        email: res.data.user.email || '', // 添加 email 字段，如果不存在则使用空字符串
+                        color: `hsl(${Math.random() * 360}, 70%, 50%)`,
                 });
 
                 //存储用户信息到localStorage
@@ -274,7 +275,8 @@ const handleRegister = () => {
     const data = JSON.stringify({
         username: username.value,
         password: md5(password.value).toString(), // 使用MD5加密密码
-        avatarId: selectedAvatarUrl.value, // 使用选中的头像ID
+        avatar: selectedAvatarUrl.value, // 使用选中的头像ID
+        nickname: username.value, // 使用用户名作为昵称
     });
 
     // console.log("data", data);

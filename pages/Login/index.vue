@@ -130,7 +130,7 @@ const handleLogin = () => {
 
                 //储存用户信息到store
                 userStore.setUserInfo({
-                    id: res.data.user.id,
+                    id: typeof res.data.user.id === 'number' ? res.data.user.id : parseInt(res.data.user.id), // 确保ID是数字
                     username: res.data.user.username,
                     nickname: res.data.user.nickname,
                     avatar: res.data.user.avatar,
@@ -211,7 +211,7 @@ onUnmounted(() => {
     left: 0;
     width: 100%;
     height: 100vh;
-   
+
 }
 
 @keyframes gradient-flow {
@@ -292,12 +292,12 @@ onUnmounted(() => {
         $left: random(100) + %;
         $duration: random(30) + 10s;
         $delay: random(10) + s;
-        
+
         width: $size;
         height: $size;
         top: $top;
         left: $left;
-        animation: 
+        animation:
             float $duration ease-in-out infinite alternate,
             particle-move $duration linear infinite alternate;
         animation-delay: -$delay;
@@ -508,7 +508,7 @@ onUnmounted(() => {
         $top: random(100) + %;
         $left: random(100) + %;
         $delay: random(20) + s;
-        
+
         width: $size;
         height: $size;
         top: $top;

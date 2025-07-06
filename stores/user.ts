@@ -4,7 +4,7 @@ import { useNuxtApp } from "nuxt/app";
 
 // 定义状态接口
 interface UserState {
-    id: string;
+    id: number | string;  // 支持数字和字符串，确保兼容性
     username: string;
     nickname: string;
     avatar: string;
@@ -16,7 +16,7 @@ interface UserState {
 export const useUserStore = defineStore("userInfo", () => {
     // 使用响应式状态
     const state = ref<UserState>({
-        id: "",
+        id: 0,  // 默认为数字0
         username: "",
         nickname: "",
         avatar: "",
@@ -33,9 +33,9 @@ export const useUserStore = defineStore("userInfo", () => {
                 
                 if (storedUser) {
                     const parsedUser = JSON.parse(storedUser);
-                    // 确保解析后的数据符合 UserState 接口
+                    // 确保解析后的数据符合 UserState 接口，特别处理ID类型
                     state.value = {
-                        id: parsedUser.id || "",
+                        id: parsedUser.id ? (typeof parsedUser.id === 'number' ? parsedUser.id : parseInt(parsedUser.id)) : 0,
                         username: parsedUser.username || "",
                         nickname: parsedUser.nickname || "",
                         avatar: parsedUser.avatar || "",
@@ -84,7 +84,7 @@ export const useUserStore = defineStore("userInfo", () => {
     // 重置用户信息
     function resetUserInfo() {
         state.value = {
-            id: "",
+            id: 0,  // 重置为数字0
             username: "",
             nickname: "",
             avatar: "",

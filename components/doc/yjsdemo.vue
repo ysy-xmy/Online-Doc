@@ -374,7 +374,7 @@ const cleanupInvalidSelections = () => {
 const initCollaborativeEditor = async () => {
     if (!isClient || !quillEditor.value) return;
 
-    // 确保所有依赖已加载
+    // 检查依赖是否已加载
     if (
         !quillModule.value ||
         !yjsModule.value ||
@@ -549,6 +549,8 @@ const initCollaborativeEditor = async () => {
         },
         true
     );
+
+
 
     // 确定占位文本
     let placeholderText = "开始协同编辑...";
@@ -790,6 +792,8 @@ const initCollaborativeEditor = async () => {
                 awareness: provider.awareness,
             }
         );
+
+
     } catch (error) {
         console.error("QuillBinding 创建失败:", error);
     }

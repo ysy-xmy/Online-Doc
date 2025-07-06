@@ -8,10 +8,10 @@
       ref="menuRef" />
 
     <!-- 文档编辑器 -->
-    <Doc-yjsdemo 
+    <Doc-yjsdemo
       ref="yjsdemoRef"
       :isReadOnly="false"
-      @openCommentPanel="openSidebar" 
+      @openCommentPanel="openSidebar"
     />
 
     <!-- 文档侧边栏 -->
@@ -26,9 +26,9 @@
     <button
       @click="showAll"
       class="cursor-pointer absolute bottom-10 right-40 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 h-10 w-10 rounded-full flex items-center justify-center transition-colors duration-200">
-      <img 
-        class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" 
-        src="https://img.icons8.com/?size=100&id=bOhSoikzLIic&format=png&color=000000" 
+      <img
+        class="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+        src="https://img.icons8.com/?size=100&id=bOhSoikzLIic&format=png&color=000000"
       />
     </button>
 
@@ -133,14 +133,14 @@ const showAll = ()=>{
   }
   showSidebar.value = true;
 
-} 
+}
 
 // 处理添加评论的方法
 const handleAddComment = (commentData) => {
   if (yjsdemoRef.value) {
     // 直接传递 commentData，它已经包含了 hasSelectionId
     const comment = yjsdemoRef.value.insertCommentAtPosition(commentData);
-   
+
     if (comment) {
       // 更新评论数据并打开侧边栏
       commentData.value = comment;

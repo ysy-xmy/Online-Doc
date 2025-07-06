@@ -24,7 +24,7 @@
         </div>
       </div>
 
-      <div class="card card-compact bg-base-100 shadow-xl hover:bg-base-200 cursor-pointer transition-all">
+      <div class="card card-compact bg-base-100 shadow-xl hover:bg-base-200 cursor-pointer transition-all" @click="showTemplateModal = true">
         <div class="card-body flex flex-row items-center">
           <div class="mr-4 text-3xl">🧩</div>
           <div>
@@ -278,6 +278,13 @@
         </form>
       </div>
     </div>
+
+    <!-- 模板选择弹窗 -->
+    <TemplateSelectModal
+      :show="showTemplateModal"
+      @close="showTemplateModal = false"
+      @template-selected="onTemplateSelected"
+    />
   </div>
 </template>
 
@@ -290,6 +297,7 @@ import ErrorAlert from '~/components/common/ErrorAlert.vue'
 import LoadingSpinner from '~/components/common/LoadingSpinner.vue'
 import EmptyState from '~/components/common/EmptyState.vue'
 import WorkspaceCard from '~/components/workspace/WorkspaceCard.vue'
+import TemplateSelectModal from '~/components/template/TemplateSelectModal.vue'
 
 definePageMeta({
   layout: 'default'
@@ -303,6 +311,7 @@ const showModal = ref(false)
 const showDeleteModal = ref(false)
 const deleteTarget = ref(null)
 const showCreateDocModal = ref(false)
+const showTemplateModal = ref(false)
 const docForm = ref({
   title: '',
   content: '',
@@ -439,6 +448,15 @@ function getVisibilityText(visibility) {
     case 'INTERNAL': return '内部'
     case 'PRIVATE': return '私有'
     default: return '私有'
+  }
+}
+
+// 处理模板选择
+function onTemplateSelected(document) {
+  showTemplateModal.value = false
+  // 跳转到新创建的文档
+  if (document && document.id) {
+    router.push(`/document/${document.id}`)
   }
 }
 </script>

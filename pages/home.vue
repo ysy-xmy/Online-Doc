@@ -7,7 +7,7 @@
         <div class="max-w-3xl space-y-4">
           <h1 class="text-3xl sm:text-5xl md:text-6xl font-bold">
             现代化的在线文档协作平台
-            <span class="underline">ThinkSync</span>
+            <span class="underline">EditVerse</span>
           </h1>
           <h3 class="text-base sm:text-xl md:text-2xl font-medium">
             基于 Nuxt3 + Vue3
@@ -64,7 +64,7 @@
             </h2>
             <p
               class="mt-4 text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              ThinkSync 提供全面的协作工具，助力团队高效沟通与知识管理
+              EditVerse 提供全面的协作工具，助力团队高效沟通与知识管理
             </p>
           </div>
 
@@ -138,7 +138,7 @@
           class="w-full lg:w-1/2 p-4 lg:p-8 order-2 lg:order-none text-center">
           <h2
             class="text-xl lg:text-2xl font-bold mb-4 lg:mb-6 text-gray-800 dark:text-gray-100">
-            探索ThinkSync的无限可能
+            探索EditVerse的无限可能
           </h2>
           <div class="space-y-4 lg:space-y-6">
             <div

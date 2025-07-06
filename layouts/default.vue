@@ -78,6 +78,7 @@
 </template>
 
 <script setup>
+import { useCookie } from "#app";
 import { ref, onMounted, computed } from "vue";
 import Sidebar from "~/components/layouts/Sidebar.vue";
 import ThemeChange from "~/components/layouts/ThemeChange.vue";
@@ -102,7 +103,8 @@ const hideUserInfo = () => {
 
 //退出登录
 const logout = () => {
-    localStorage.removeItem("userInfo");
+    //删除cookie
+    useCookie("token").value = null;
     navigateTo("/login");
 };
 

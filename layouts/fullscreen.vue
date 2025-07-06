@@ -77,8 +77,9 @@
                 >
                   <img
                     alt="用户头像"
-                    :src="userInfo.avatar"
+                    :src="userInfo.avatar || '/avatar_1.webp'"
                     class="object-cover"
+                    @error="handleAvatarError"
                   />
                 </div>
               </div>
@@ -199,6 +200,13 @@ const showUserInfo = () => {
 // 隐藏用户信息
 const hideUserInfo = () => {
   isUserInfoVisible.value = false;
+};
+
+// 头像加载错误处理
+const handleAvatarError = (event) => {
+  console.log('头像加载失败，使用默认头像');
+  console.log('当前头像URL:', userInfo.avatar);
+  event.target.src = '/avatar_1.webp';
 };
 
 const { $axios } = useNuxtApp();

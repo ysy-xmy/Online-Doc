@@ -17,13 +17,14 @@
     "@pinia-plugin-persistedstate/nuxt": "^1.2.1",
     "@pinia/nuxt": "^0.11.1",
     "@tailwindcss/vite": "^4.1.10",
+    "@wangeditor-next/editor-for-vue": "^5.1.14",
+    "@wangeditor/editor": "^5.1.23",
     "axios": "^1.10.0",
     "crypto-js": "^4.2.0",
     "daisyui": "^5.0.43",
     "highlight.js": "^11.11.1",
     "lodash": "^4.17.21",
     "nuxt": "^3.17.5",
-    "nuxt-icon": "1.0.0-beta.7",
     "pinia": "^3.0.3",
     "quill": "^2.0.3",
     "quill-cursors": "^4.0.4",
@@ -36,6 +37,7 @@
   },
   "packageManager": "pnpm@8.9.2+sha1.5f2fa48d614263457cf5d7fb7be8b878da318d87",
   "devDependencies": {
+    "@nuxt/icon": "^1.15.0",
     "@types/crypto-js": "^4.2.2"
   }
 }

@@ -10,7 +10,7 @@ export default defineNuxtConfig({
     modules: [
         '@pinia/nuxt',
         '@pinia-plugin-persistedstate/nuxt',
-        'nuxt-icon'
+        '@nuxt/icon'
     ],
     pinia: {
         autoImports: [

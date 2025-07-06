@@ -27,7 +27,7 @@
 <script>
 import "@wangeditor/editor/dist/css/style.css";
 import { onBeforeUnmount, ref, shallowRef, onMounted } from "vue";
-import { Editor, Toolbar } from "@wangeditor/editor-for-vue";
+import { Editor, Toolbar } from "@wangeditor-next/editor-for-vue";
 import axios from "axios";
 import { documentApi } from '~/api/doc/index.ts'
 export default {

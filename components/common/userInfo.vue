@@ -34,7 +34,7 @@
                         class="w-24 h-24 rounded-full ring-4 ring-primary ring-offset-base-100 ring-offset-2 overflow-hidden"
                     >
                         <img
-                            :src="userStore.avatar || '/avatar_1.webp'"
+                            :src="userStore.avatar.value || '/avatar_1.webp'"
                             alt="用户头像"
                             class="w-full h-full object-cover"
                         />
@@ -197,9 +197,9 @@ const formData = reactive({
 
 // 初始化表单数据
 const initFormData = () => {
-    formData.username = userStore.username || "";
-    formData.nickname = userStore.nickname || "";
-    formData.email = userStore.email || "";
+    formData.username = userStore.username.value || "";
+    formData.nickname = userStore.nickname.value || "";
+    formData.email = userStore.email.value || "";
 };
 
 // 重置表单
@@ -215,7 +215,7 @@ const selectAvatar = (index) => {
 // 打开头像选择
 const openAvatarUpload = () => {
     // 从当前头像URL中提取数字
-    const currentAvatar = userStore.avatar || "/avatar_1.webp";
+    const currentAvatar = userStore.avatar.value || "/avatar_1.webp";
     const match = currentAvatar.match(/avatar_(\d+)\.webp/);
     if (match) {
         selectedAvatar.value = parseInt(match[1]);
@@ -237,12 +237,7 @@ const confirmAvatarChange = async () => {
         });
 
         // 更新store
-        userStore.avatar = newAvatar;
-
-        // 更新本地存储
-        const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
-        userInfo.avatar = newAvatar;
-        localStorage.setItem("userInfo", JSON.stringify(userInfo));
+        userStore.updateUserInfo({ avatar: newAvatar });
 
         showAvatarUpload.value = false;
     } catch (error) {
@@ -265,14 +260,10 @@ const saveUserInfo = async () => {
         });
 
         // 更新store
-        userStore.nickname = formData.nickname;
-        userStore.email = formData.email;
-
-        // 更新本地存储
-        const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
-        userInfo.nickname = formData.nickname;
-        userInfo.email = formData.email;
-        localStorage.setItem("userInfo", JSON.stringify(userInfo));
+        userStore.updateUserInfo({
+            nickname: formData.nickname,
+            email: formData.email
+        });
 
         // 显示成功提示
         alert("保存成功！");
@@ -287,6 +278,8 @@ const saveUserInfo = async () => {
 // 组件挂载时初始化数据
 onMounted(() => {
     initFormData();
+    console.log('用户信息组件挂载，当前用户数据:', userStore.userInfo.value);
+    console.log('当前头像URL:', userStore.avatar.value);
 });
 </script>
 

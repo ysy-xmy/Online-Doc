@@ -120,9 +120,23 @@ export const useUserStore = defineStore("userInfo", () => {
     // 添加一个计算属性，确保在服务端和客户端都能访问
     const userInfo = computed(() => state.value);
 
+    // 添加单独的属性访问器
+    const id = computed(() => state.value.id);
+    const username = computed(() => state.value.username);
+    const nickname = computed(() => state.value.nickname);
+    const avatar = computed(() => state.value.avatar);
+    const email = computed(() => state.value.email);
+    const color = computed(() => state.value.color);
+
     return {
         state,
         userInfo,
+        id,
+        username,
+        nickname,
+        avatar,
+        email,
+        color,
         setUserInfo,
         updateUserInfo,
         resetUserInfo,

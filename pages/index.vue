@@ -322,16 +322,13 @@
                           <td>
                               <div class="flex items-center gap-3">
                                   <div class="avatar">
-                                      <div
-                                          class="mask mask-squircle w-8 h-8 bg-primary text-primary-content flex items-center justify-center"
-                                      >
-                                          {{
-                                              getInitial(
-                                                  doc.creator?.nickname ||
-                                                      doc.creator?.username ||
-                                                      "未知"
-                                              )
-                                          }}
+                                      <div class="w-8 h-8 rounded-full overflow-hidden">
+                                          <img
+                                              :src="doc.creator?.avatar || '/avatar_1.webp'"
+                                              :alt="doc.creator?.nickname || doc.creator?.username || '未知'"
+                                              class="w-full h-full object-cover"
+                                              @error="(e) => handleAvatarError(e, doc.creator?.nickname || doc.creator?.username || '未知')"
+                                          />
                                       </div>
                                   </div>
                                   <div>
@@ -351,17 +348,13 @@
                                   class="flex items-center gap-3"
                               >
                                   <div class="avatar">
-                                      <div
-                                          class="mask mask-squircle w-8 h-8 bg-secondary text-secondary-content flex items-center justify-center"
-                                      >
-                                          {{
-                                              getInitial(
-                                                  doc.lastModifier.nickname ||
-                                                      doc.lastModifier
-                                                          .username ||
-                                                      "未知"
-                                              )
-                                          }}
+                                      <div class="w-8 h-8 rounded-full overflow-hidden">
+                                          <img
+                                              :src="doc.lastModifier.avatar || '/avatar_1.webp'"
+                                              :alt="doc.lastModifier.nickname || doc.lastModifier.username || '未知'"
+                                              class="w-full h-full object-cover"
+                                              @error="(e) => handleAvatarError(e, doc.lastModifier.nickname || doc.lastModifier.username || '未知')"
+                                          />
                                       </div>
                                   </div>
                                   <div>
@@ -732,6 +725,12 @@ function getDocumentStatusText(status) {
       default:
           return "草稿";
   }
+}
+
+// 头像错误处理
+function handleAvatarError(event, userName) {
+  // 当头像加载失败时，替换为默认头像
+  event.target.src = '/avatar_1.webp';
 }
 
 // 格式化日期

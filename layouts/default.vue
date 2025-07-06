@@ -169,8 +169,9 @@
                           >
                               <img
                                   alt="用户头像"
-                                  :src="userInfo.avatar "
+                                  :src="userInfo.avatar || '/avatar_1.webp'"
                                   class="object-cover"
+                                  @error="handleAvatarError"
                               />
                           </div>
                       </div>
@@ -378,6 +379,13 @@ const logout = () => {
   navigateTo("/login");
 };
 
+// 头像加载错误处理
+const handleAvatarError = (event) => {
+  console.log('头像加载失败，使用默认头像');
+  console.log('当前头像URL:', userInfo.value.avatar);
+  event.target.src = '/avatar_1.webp';
+};
+
 // console.log("test1");
 
 //获取用户信息（如果没有则获取）
@@ -387,19 +395,20 @@ onMounted(() => {
   loadSearchHistory()
 
   if (localStorage.getItem("userInfo") === null) {
+      console.log('从API获取用户信息');
       $axios("/api/auth/me", {
           method: "GET",
       })
           .then((res) => {
-              userStore.$patch({
+              console.log('API返回的用户信息:', res.data);
+              userStore.setUserInfo({
                   id: res.data.id,
                   username: res.data.username,
                   nickname: res.data.nickname,
                   avatar: res.data.avatar,
                   email: res.data.email || "",
+                  color: `hsl(${Math.random() * 360}, 70%, 50%)`,
               });
-
-              localStorage.setItem("userInfo", JSON.stringify(res.data));
           })
           .catch((err) => {
               console.log(err);
@@ -407,14 +416,22 @@ onMounted(() => {
   } else {
       // 从localStorage加载用户信息
       const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-      userStore.$patch({
+      console.log('从localStorage加载用户信息:', userInfo);
+      userStore.setUserInfo({
           id: userInfo.id || "",
           username: userInfo.username || "",
           nickname: userInfo.nickname || "",
           avatar: userInfo.avatar || "",
           email: userInfo.email || "",
+          color: userInfo.color || `hsl(${Math.random() * 360}, 70%, 50%)`,
       });
   }
+
+  // 添加调试信息
+  setTimeout(() => {
+      console.log('当前用户store状态:', userStore.userInfo.value);
+      console.log('当前头像URL:', userStore.avatar.value);
+  }, 1000);
 });
 
 // 计算属性

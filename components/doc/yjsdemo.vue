@@ -1350,6 +1350,10 @@ const setRevisionMode = (mode) => {
       // 补充所有修订内容的按钮
       nextTick(() => {
         addRevisionButtons();
+        
+        // 检索并打印所有修订
+        const revisions = extractRevisions();
+        console.log('修订模式下的所有修订:', revisions);
       });
     } else {
       // 关闭修订模式
@@ -1425,10 +1429,13 @@ async function handleMarkAsDeleted(index, length) {
   // 3. 等待内容刷新
   await nextTick();
 
+  // 获取删除的文本内容
+  const deletedText = quill.getText(mergeStart, mergeLen);
+
   // 4. 先整体包裹
   quill.formatText(mergeStart, mergeLen, 'deletedContent', {
     type: 'delete',
-    content: '', // 先占位
+    content: deletedText,
     timestamp: Date.now(),
     userId: userInfo.value.id,
     hint: ''
@@ -1450,13 +1457,19 @@ async function handleMarkAsDeleted(index, length) {
     }
   }
   if (found) {
-    const text = found.textContent;
+    const bounds = quill.getBounds(mergeStart);
     const data = {
+      id: `delete_${Date.now()}`, // 唯一ID
       type: 'delete',
-      content: text,
+      content: deletedText,
       timestamp: Date.now(),
       userId: userInfo.value.id,
-      hint: `删除：${text}`
+      hint: `删除：${deletedText}`,
+      yPosition: bounds.top, // Y轴坐标
+      range: {
+        index: mergeStart,
+        length: mergeLen
+      }
     };
     
     // 同时设置 setAttribute 和 dataset
@@ -1494,11 +1507,17 @@ const handleAddition = (op, index) => {
       const node = super.create(value);
 
       const newContentData = {
+        id: `add_${Date.now()}`, // 唯一ID
         type: 'add',
         content: value.content || value,
         timestamp: Date.now(),
         userId: userInfo.value.id,
-        hint: `新增：${value.content || value}`
+        hint: `新增：${value.content || value}`,
+        yPosition: null, // 初始化为 null，后续更新
+        range: {
+          index: value.index,
+          length: value.content ? value.content.length : 0
+        }
       };
       
       // 使用 setAttribute 和 dataset 同时设置
@@ -1533,7 +1552,8 @@ const handleAddition = (op, index) => {
     content: content,
     timestamp: Date.now(),
     userId: userInfo.value.id,
-    hint: `新增：${content}`
+    hint: `新增：${content}`,
+    index: index
   });
 
   // 获取最新的新增节点并触发同步
@@ -1550,21 +1570,30 @@ const handleAddition = (op, index) => {
     }
   }
 
-      // 触发 Yjs 更新
-      try {
-      const delta = quill.getContents();
-      ydoc.transact(() => {
-        const binding = quill.getModule("y-quill");
-        if (binding) {
-          binding.ytext.delete(0, binding.ytext.length);
-          binding.ytext.insert(0, delta);
-        }
-      });
-    } catch (error) {
-      console.error("同步 Delta 时出错:", error);
-    }
-};
+  // 更新 Y 轴坐标
+  if (found) {
+    const bounds = quill.getBounds(index);
+    const newContentData = JSON.parse(found.getAttribute('data-new'));
+    newContentData.yPosition = bounds.top;
+    
+    found.setAttribute('data-new', JSON.stringify(newContentData));
+    found.dataset.new = JSON.stringify(newContentData);
+  }
 
+  // 触发 Yjs 更新
+  try {
+    const delta = quill.getContents();
+    ydoc.transact(() => {
+      const binding = quill.getModule("y-quill");
+      if (binding) {
+        binding.ytext.delete(0, binding.ytext.length);
+        binding.ytext.insert(0, delta);
+      }
+    });
+  } catch (error) {
+    console.error("同步 Delta 时出错:", error);
+  }
+};
 
 const applyRevision = () => {
   // 只处理修订Blot，不动评论Blot
@@ -1727,7 +1756,7 @@ function handleRejectRevision(node) {
 
   if (node.getAttribute('data-new') !== null) {
     // 对于新增内容，直接删除
-    quill.deleteText(index, length);
+    quill.deleteText(index, length, 'silent');
   } else if (node.getAttribute('data-deleted') !== null) {
     const value = JSON.parse(
       node.getAttribute('data-deleted') || 
@@ -1736,10 +1765,24 @@ function handleRejectRevision(node) {
     const text = value.content;
     
     // 删除删除标记
-    quill.deleteText(index, length);
+    quill.deleteText(index, length, 'silent');
     
-    // 插入原始文本
-    quill.insertText(index, text, 'user');
+    // 插入原始文本，使用 'silent' 源以避免触发修订
+    quill.insertText(index, text, { color: false }, 'silent');
+  }
+
+  // 触发 Yjs 更新
+  try {
+    const delta = quill.getContents();
+    ydoc.transact(() => {
+      const binding = quill.getModule("y-quill");
+      if (binding) {
+        binding.ytext.delete(0, binding.ytext.length);
+        binding.ytext.insert(0, delta);
+      }
+    });
+  } catch (error) {
+    console.error("同步 Delta 时出错:", error);
   }
 }
 
@@ -1841,6 +1884,78 @@ const getTextFromDelta = (delta, index, length) => {
     }
   });
   return str;
+};
+
+const extractRevisions = () => {
+  if (!quill) return;
+
+  const editorContent = quill.root;
+  const newContentMarks = editorContent.querySelectorAll('[data-new]');
+  const deletedContentMarks = editorContent.querySelectorAll('[data-deleted]');
+
+  const allRevisions = [];
+
+  // 处理新增内容
+  newContentMarks.forEach((node) => {
+    try {
+      const revisionData = JSON.parse(
+        node.getAttribute('data-new') || 
+        node.dataset.new
+      );
+      
+      // 重新获取最新的 Y 轴坐标
+      const bounds = quill.getBounds(revisionData.range.index);
+      revisionData.yPosition = bounds.top;
+      
+      allRevisions.push({
+        ...revisionData,
+        nodeInfo: {
+          tagName: node.tagName,
+          classList: Array.from(node.classList),
+          attributes: Array.from(node.attributes).map(attr => ({
+            name: attr.name,
+            value: attr.value
+          }))
+        }
+      });
+    } catch (error) {
+      console.error('解析新增内容时出错:', error);
+    }
+  });
+
+  // 处理删除内容
+  deletedContentMarks.forEach((node) => {
+    try {
+      const revisionData = JSON.parse(
+        node.getAttribute('data-deleted') || 
+        node.dataset.deleted
+      );
+      
+      // 重新获取最新的 Y 轴坐标
+      const bounds = quill.getBounds(revisionData.range.index);
+      revisionData.yPosition = bounds.top;
+      
+      allRevisions.push({
+        ...revisionData,
+        nodeInfo: {
+          tagName: node.tagName,
+          classList: Array.from(node.classList),
+          attributes: Array.from(node.attributes).map(attr => ({
+            name: attr.name,
+            value: attr.value
+          }))
+        }
+      });
+    } catch (error) {
+      console.error('解析删除内容时出错:', error);
+    }
+  });
+
+  // 按 Y 轴坐标排序
+  allRevisions.sort((a, b) => (a.yPosition || 0) - (b.yPosition || 0));
+
+  console.log('文档中所有修订:', allRevisions);
+  return allRevisions;
 };
 </script>
 

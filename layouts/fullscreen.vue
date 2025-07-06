@@ -110,7 +110,7 @@
             <div class="flex flex-1 overflow-hidden">
                 <!-- 文档编辑区 -->
                 <main
-                    class="document-content flex-1 p-6 bg-base-100 overflow-auto relative"
+                    class="document-content flex-1 p-6 bg-base-100 overflow-auto relative flex flex-row"
                 >
                     <slot></slot>
                 </main>

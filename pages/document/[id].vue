@@ -1,11 +1,12 @@
 <template>
   <div
-    class="h-full w-full flex flex-col overflow-y-auto dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-52"
+    class="h-full w-full flex flex-col overflow-y-auto dark:bg-gray-900 text-gray-900 dark:text-gray-100 pl-52"
   >
     <!-- <WriteRead v-if="hasWritePermission"  />
     <ReadOnlyViewer v-else /> -->
 <WriteRead  />
   </div>
+  <RevisionInfo/>
 </template>
 
 <script setup>
@@ -14,6 +15,7 @@ import { useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import { documentShareApi } from "~/api/collaborators";
 import WriteRead from "./write_read.vue";
+import RevisionInfo from "./revisionInfo.vue"
 import ReadOnlyViewer from "./ReadOnlyViewer.vue";
 
 // 路由和状态管理

@@ -1509,27 +1509,25 @@ async function handleAddition(op, index) {
 
   class NewContentBlot extends Inline {
     static create(value) {
-      var id =`add_${Date.now()}`
       const node = super.create(value);
-
+      
+      // 确保数据结构完整
       const newContentData = {
-        id: id, // 唯一ID
+        id: value.id || `add_${Date.now()}`, // 使用传入的 ID 或生成新 ID
         type: 'add',
-        content: value.content || value,
-        timestamp: Date.now(),
-        userId: userInfo.value.id,
-        hint: `新增：${value.content || value}`,
-        yPosition: null, // 初始化为 null，后续更新
-        range: {
-          index: value.index,
-          length: value.content ? value.content.length : 0
+        content: value.content || '',
+        timestamp: value.timestamp || Date.now(),
+        userId: value.userId || userInfo.value.id,
+        hint: value.hint || `新增：${value.content || ''}`,
+        yPosition: value.yPosition || null,
+        range: value.range || {
+          index: index,
+          length: (value.content || content).length
         }
       };
       
-      // 使用 setAttribute 和 dataset 同时设置
+      // 同时使用 setAttribute 和 dataset
       node.setAttribute('data-new', JSON.stringify(newContentData));
-      node.setAttribute('id', id);
-
       node.dataset.new = JSON.stringify(newContentData);
       
       node.style.color = 'red';
@@ -1556,50 +1554,60 @@ async function handleAddition(op, index) {
 
   // 获取编辑器
   const editor = quill.root;
-  const allSpans = Array.from(editor.querySelectorAll('[data-new]'));
-  let existingBlot = null;
-  let existingContent = '';
+  
+  // 使用 ID 查找最近的新增内容节点
+  const existingNewContentMarks = Array.from(editor.querySelectorAll('[data-new]'));
+  let existingNode = null;
+  let existingData = null;
 
-  // 查找现有的 Blot
-  for (const span of allSpans) {
-    const blot = Quill.find(span);
-    console.log(blot,'2222啦啦啦啦啦2222');
+  // 遍历查找最近的新增内容节点
+  for (const node of existingNewContentMarks) {
+    const blotData = JSON.parse(
+      node.getAttribute('data-new') || 
+      node.dataset.new
+    );
 
-    if (!blot) continue;
-      existingBlot = blot;
-      
-      // 获取现有 Blot 的内容
-      const existingBlotData = JSON.parse(
-        span.getAttribute('data-new') || 
-        span.dataset.new
-      );
-      existingContent = existingBlotData.content || '';
-      
+    // 检查是否是同一个用户的新增内容，并且在相近的时间戳内
+    if (
+      blotData.userId === userInfo.value.id  // 5秒内的新增内容
+    ) {
+      existingNode = node;
+      existingData = blotData;
       break;
     }
-  
+  }
 
-  // 如果存在现有的 Blot，先删除
-  if (existingBlot) {
-    const blotLength = existingBlot.length();
-    quill.deleteText(index, blotLength, 'silent');
+  // 准备新的内容数据
+  const newContentData = {
+    id: existingData ? existingData.id : `add_${Date.now()}`,
+    type: 'add',
+    content: existingData 
+      ? existingData.content + content 
+      : content,
+    timestamp: Date.now(),
+    userId: userInfo.value.id,
+    hint: `新增：${existingData ? existingData.content + content : content}`,
+    yPosition: null,
+    range: {
+      index: existingData ? existingData.range.index : index,
+      length: (existingData ? existingData.content : '') .length + content.length
+    }
+  };
+
+  // 如果存在现有的新增内容节点，先删除
+  if (existingNode) {
+    const blot = Quill.find(existingNode);
+    if (blot) {
+      const blotLength = blot.length();
+      quill.deleteText(index, blotLength, 'silent');
+    }
   }
 
   // 插入新的文本
   quill.insertText(index, content, 'silent');
 
-  // 合并现有内容和新内容
-  const mergedContent = existingContent + content;
-
   // 插入新的内容
-  quill.formatText(index, mergedContent.length, 'newContent', {
-    type: 'add',
-    content: 333,
-    timestamp: Date.now(),
-    userId: userInfo.value.id,
-    hint: `新增：${mergedContent}`,
-    index: index
-  });
+  quill.formatText(index, newContentData.content.length, 'newContent', newContentData);
 
   // 重新获取最新的新增节点
   const updatedAllSpans = Array.from(editor.querySelectorAll('[data-new]'));
@@ -1607,14 +1615,16 @@ async function handleAddition(op, index) {
   for (const span of updatedAllSpans) {
     const blot = Quill.find(span);
     if (!blot) continue;
+    const spanData = JSON.parse(span.getAttribute('data-new'));
+    if (spanData.id === newContentData.id) {
       found = span;
       break;
+    }
   }
 
   // 更新 Y 轴坐标
   if (found) {
     const bounds = quill.getBounds(index);
-    const newContentData = JSON.parse(found.getAttribute('data-new'));
     newContentData.yPosition = bounds.top;
     
     found.setAttribute('data-new', JSON.stringify(newContentData));
@@ -1638,7 +1648,7 @@ async function handleAddition(op, index) {
   } catch (error) {
     console.error("同步 Delta 时出错:", error);
   }
-};
+}
 
 const applyRevision = () => {
   console.log(3333)
@@ -1882,86 +1892,6 @@ function handleRejectRevision(revisionData) {
   }
 }
 
-function addRevisionButtons() {
-  const editor = quill.root;
-  editor.querySelectorAll('[data-new]').forEach(node => {
-    createRevisionFloatingBox(node, 'add');
-  });
-  editor.querySelectorAll('[data-deleted]').forEach(node => {
-    createRevisionFloatingBox(node, 'delete');
-  });
-}
-
-function removeRevisionButtons() {
-  const editor = quill.root;
-  editor.querySelectorAll('.revision-apply-btn, .revision-reject-btn').forEach(btn => {
-    btn.remove();
-  });
-}
-
-function createRevisionFloatingBox(node, type) {
-  let data;
-  try {
-    // 尝试多种方式获取数据
-    data = JSON.parse(
-      node.getAttribute(`data-${type}`) || 
-      node.dataset[type] || 
-      node.getAttribute('data-deleted') || 
-      node.getAttribute('data-new')
-    );
-    
-    // 详细日志
-    console.log(`${type} 节点数据获取:`, {
-      node: node,
-      parseMethod: 'multiple attempts',
-      data: data,
-      attributes: Array.from(node.attributes).map(attr => ({
-        name: attr.name, 
-        value: attr.value
-      })),
-      dataset: node.dataset
-    });
-  } catch (error) {
-    console.error('解析修订数据失败:', error, node);
-    return;
-  }
-  
-  const box = document.createElement('div');
-  box.className = 'revision-floating-box';
-  box.innerHTML = `
-    <div class="revision-title">${type === 'add' ? '新增' : '删除'}：${data.content}</div>
-    <div class="revision-meta">
-      <span>修订人：${data.userId || '未知'}</span>
-      <span>时间：${new Date(data.timestamp).toLocaleString()}</span>
-    </div>
-    <div class="revision-actions">
-      <button class="revision-apply-btn">✔</button>
-      <button class="revision-reject-btn">✖</button>
-    </div>
-  `;
-  const rect = node.getBoundingClientRect();
-  const editorRect = quillEditor.value.getBoundingClientRect();
-  box.style.position = 'absolute';
-  box.style.left = `${rect.right - editorRect.left + 10}px`;
-  box.style.top = `${rect.top - editorRect.top}px`;
-  box.style.zIndex = 2000;
-  box.style.borderLeftColor = type === 'add' ? '#36b3f7' : '#e74c3c';
-
-  box.querySelector('.revision-apply-btn').onclick = (e) => {
-    e.stopPropagation();
-    handleApplyRevision(node);
-    box.remove();
-    addRevisionButtons();
-  };
-  box.querySelector('.revision-reject-btn').onclick = (e) => {
-    e.stopPropagation();
-    handleRejectRevision(node);
-    box.remove();
-    addRevisionButtons();
-  };
-
-  quillEditor.value.appendChild(box);
-}
 
 const getTextFromDelta = (delta, index, length) => {
   let str = '';
@@ -2108,10 +2038,6 @@ const extractRevisions = () => {
       </div>
     </div>
     <div ref="quillEditor" class="editor"></div>
-    <div class="revision-controls" v-if="revisionMode">
-      <button @click="applyRevision">应用修订</button>
-      <button @click="cancelRevision">取消修订</button>
-    </div>
   </div>
 </template>
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-base-100 p-4 rounded-lg shadow-md w-84">
+  <div class="bg-base-100 p-4 rounded-lg w-84">
     <div class="space-y-4">
       <div
         v-for="revision in sortedRevisions"

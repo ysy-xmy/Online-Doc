@@ -1342,7 +1342,6 @@ const insertCommentAtPosition = (commentData) => {
 // 设置修订模式的方法
 const setRevisionMode = (mode) => {
   revisionMode.value = mode;
-  
   if (quill) {
     if (mode) {
       // 启用修订模式
@@ -1353,10 +1352,7 @@ const setRevisionMode = (mode) => {
       // 补充所有修订内容的按钮
       nextTick(() => {
         addRevisionButtons();
-        
-        // 检索并打印所有修订
         const revisions = extractRevisions();
-        console.log('修订模式下的所有修订:', revisions);
       });
     } else {
       // 关闭修订模式
@@ -1461,20 +1457,20 @@ async function handleMarkAsDeleted(index, length) {
   }
   if (found) {
     const bounds = quill.getBounds(mergeStart);
+    const foundContent = found.textContent || '';
     const data = {
       id: `delete_${Date.now()}`, // 唯一ID
       type: 'delete',
-      content: deletedText,
+      content: foundContent, // 结合已有内容和新删除的文本
       timestamp: Date.now(),
       userId: userInfo.value.id,
-      hint: `删除：${deletedText}`,
+      hint: `删除：${foundContent}`, // 提示信息包含完整的删除内容
       yPosition: bounds.top, // Y轴坐标
       range: {
         index: mergeStart,
         length: mergeLen
       }
-    };
-    
+    };    
     // 同时设置 setAttribute 和 dataset
     found.setAttribute('data-deleted', JSON.stringify(data));
     found.dataset.deleted = JSON.stringify(data);
@@ -1502,7 +1498,7 @@ async function handleMarkAsDeleted(index, length) {
   quill.setSelection(mergeStart, 0, 'silent');
 }
 
-const handleAddition = (op, index) => {
+async function handleAddition(op, index) {
   let content = op.insert;
   if (content === '\n' || typeof content !== 'string') return;
 

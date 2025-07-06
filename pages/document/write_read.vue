@@ -74,7 +74,7 @@ const documentName = ref("未命名文档");
 const showSidebar = ref(false);
 const menuRef = ref(null);
 const yjsdemoRef = ref(null);
-
+const emits = defineEmits(['changeRevision'])
 // 添加修订模式状态
 const isRevisionMode = ref(false);
 
@@ -165,10 +165,9 @@ const handleRevisionModeToggle = (mode) => {
 };
 
 const handleRevisionUpdate = (revisions) => {
-  console.log('修订更新:', revisions);
-  // 每个 revision 都是完整的原始修订对象
+  emits('changeRevision',revisions)
   revisions.forEach(revision => {
-    console.log(`类型: ${revision.type}, 内容: ${revision.content}, 操作: ${revision.action}`);
+    console.log(`类型: ${revision.type}, 内容: ${revision.content}`);
     // 可以进行进一步的处理
   });
 }

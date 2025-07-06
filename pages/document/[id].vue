@@ -4,7 +4,7 @@
   >
     <!-- <WriteRead v-if="hasWritePermission"  />
     <ReadOnlyViewer v-else /> -->
-<WriteRead  @changereVision="changereVision"/>
+<WriteRead  @changeRevision="changeRevision"/>
   </div>
   <RevisionInfo :revisions="documentRevisions"/>
 </template>
@@ -41,7 +41,7 @@ const onlineUsers = ref([
   },
 ]);
 
-const changereVision =(list)=>{
+const changeRevision =(list)=>{
   documentRevisions.value = list
 }
 

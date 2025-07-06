@@ -17,8 +17,6 @@
     "@pinia-plugin-persistedstate/nuxt": "^1.2.1",
     "@pinia/nuxt": "^0.11.1",
     "@tailwindcss/vite": "^4.1.10",
-    "@wangeditor-next/editor-for-vue": "^5.1.14",
-    "@wangeditor/editor": "^5.1.23",
     "axios": "^1.10.0",
     "crypto-js": "^4.2.0",
     "daisyui": "^5.0.43",

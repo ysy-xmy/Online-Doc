@@ -54,13 +54,16 @@ const handleClosePanel = () => {
 const documentStore = useDocumentStore();
 const documentStoreAPI = useDocumentStoreAPI();
 const documentInfo = documentStore.documentInfo;
+//新添加：
+const editorStore = useEditorStore();
 
 // 使用 definePageMeta 指定全局布局
 definePageMeta({
   layout: "fullscreen",
 });
 
-import { ref, provide } from "vue";
+import { ref, provide } from 'vue'
+import {useEditorStore} from "~/stores/editorStore.js";
 
 const route = useRoute();
 const documentId = route.params.id;
@@ -155,10 +158,11 @@ onMounted(() => {
 
 // 保存文档的方法
 const saveDocument = (name) => {
-  documentInfo.value = name;
-  // 在实际应用中，这里应该调用后端保存接口
-  console.log("保存文档:", name, documentContent.value);
-
+    documentInfo.value = name;
+    editorStore.setDocumentTitle(name);//新添加，更新文档标题的存储
+    // 在实际应用中，这里应该调用后端保存接口
+    console.log("保存文档:", name, documentContent.value);
+    console.log("editorStore:", editorStore.documentTitle);
   // 更新保存状态
   if (menuRef.value) {
       menuRef.value.setSaveStatus("已保存");

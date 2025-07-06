@@ -138,6 +138,17 @@ const showAll = ()=>{
   showSidebar.value = true;
 
 } 
+//别删这两个函数
+const apply =(revisionData)=>{
+  if (yjsdemoRef.value) {
+    yjsdemoRef.value.handleApplyRevision(revisionData)
+  }
+}
+const cancel=(revisionData)=>{
+  if (yjsdemoRef.value) {
+    yjsdemoRef.value.handleRejectRevision(revisionData)
+  }
+}
 
 // 处理添加评论的方法
 const handleAddComment = (commentData) => {
@@ -188,6 +199,10 @@ const saveDocument = (name) => {
     menuRef.value.setLastSaved(new Date());
   }
 };
+defineExpose({
+  apply,
+  cancel
+})
 </script>
 
 <style scoped>

@@ -4,9 +4,9 @@
   >
     <!-- <WriteRead v-if="hasWritePermission"  />
     <ReadOnlyViewer v-else /> -->
-<WriteRead  @changeRevision="changeRevision"/>
+<WriteRead ref="writereadRef"  @changeRevision="changeRevision"/>
   </div>
-  <RevisionInfo :revisions="documentRevisions"/>
+  <RevisionInfo :revisions="documentRevisions" @apply="apply" @cancel="cancel"/>
 </template>
 
 <script setup>
@@ -25,6 +25,7 @@ const documentId = route.params.id;
 const currentUserId = userStore.userId;
 const hasWritePermission = ref(false);
 const documentRevisions =ref()
+const writereadRef = ref(null)
 // 模拟在线用户数据（后面连接）
 const onlineUsers = ref([
   {
@@ -44,7 +45,16 @@ const onlineUsers = ref([
 const changeRevision =(list)=>{
   documentRevisions.value = list
 }
-
+const apply=(revisionData)=>{
+  if(writereadRef){
+    writereadRef.value.apply(revisionData)
+  }
+}
+const cancel=(revisionData)=>{
+  if(writereadRef){
+    writereadRef.value.cancel(revisionData)
+  }
+}
 // 使用 definePageMeta 指定全局布局
 definePageMeta({
   layout: "fullscreen",

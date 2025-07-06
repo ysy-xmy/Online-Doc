@@ -1458,8 +1458,9 @@ async function handleMarkAsDeleted(index, length) {
   if (found) {
     const bounds = quill.getBounds(mergeStart);
     const foundContent = found.textContent || '';
+    let id =`delete_${Date.now()}`
     const data = {
-      id: `delete_${Date.now()}`, // 唯一ID
+      id: id, // 唯一ID
       type: 'delete',
       content: foundContent, // 结合已有内容和新删除的文本
       timestamp: Date.now(),
@@ -1473,6 +1474,7 @@ async function handleMarkAsDeleted(index, length) {
     };    
     // 同时设置 setAttribute 和 dataset
     found.setAttribute('data-deleted', JSON.stringify(data));
+    found.setAttribute('id', id);
     found.dataset.deleted = JSON.stringify(data);
     
     // 触发 updateRevision 事件，传递完整的修订数组
@@ -1507,10 +1509,11 @@ async function handleAddition(op, index) {
 
   class NewContentBlot extends Inline {
     static create(value) {
+      var id =`add_${Date.now()}`
       const node = super.create(value);
 
       const newContentData = {
-        id: `add_${Date.now()}`, // 唯一ID
+        id: id, // 唯一ID
         type: 'add',
         content: value.content || value,
         timestamp: Date.now(),
@@ -1525,6 +1528,8 @@ async function handleAddition(op, index) {
       
       // 使用 setAttribute 和 dataset 同时设置
       node.setAttribute('data-new', JSON.stringify(newContentData));
+      node.setAttribute('id', id);
+
       node.dataset.new = JSON.stringify(newContentData);
       
       node.style.color = 'red';
@@ -1549,28 +1554,61 @@ async function handleAddition(op, index) {
   NewContentBlot.tagName = 's';
   Quill.register(NewContentBlot, true);
 
-  // 只包裹没有 data-new 的内容
-  quill.formatText(index, content.length, 'newContent', {
+  // 获取编辑器
+  const editor = quill.root;
+  const allSpans = Array.from(editor.querySelectorAll('[data-new]'));
+  let existingBlot = null;
+  let existingContent = '';
+
+  // 查找现有的 Blot
+  for (const span of allSpans) {
+    const blot = Quill.find(span);
+    console.log(blot,'2222啦啦啦啦啦2222');
+
+    if (!blot) continue;
+      existingBlot = blot;
+      
+      // 获取现有 Blot 的内容
+      const existingBlotData = JSON.parse(
+        span.getAttribute('data-new') || 
+        span.dataset.new
+      );
+      existingContent = existingBlotData.content || '';
+      
+      break;
+    }
+  
+
+  // 如果存在现有的 Blot，先删除
+  if (existingBlot) {
+    const blotLength = existingBlot.length();
+    quill.deleteText(index, blotLength, 'silent');
+  }
+
+  // 插入新的文本
+  quill.insertText(index, content, 'silent');
+
+  // 合并现有内容和新内容
+  const mergedContent = existingContent + content;
+
+  // 插入新的内容
+  quill.formatText(index, mergedContent.length, 'newContent', {
     type: 'add',
-    content: content,
+    content: 333,
     timestamp: Date.now(),
     userId: userInfo.value.id,
-    hint: `新增：${content}`,
+    hint: `新增：${mergedContent}`,
     index: index
   });
 
-  // 获取最新的新增节点并触发同步
-  const editor = quill.root;
-  const allSpans = Array.from(editor.querySelectorAll('[data-new]'));
+  // 重新获取最新的新增节点
+  const updatedAllSpans = Array.from(editor.querySelectorAll('[data-new]'));
   let found = null;
-  for (const span of allSpans) {
+  for (const span of updatedAllSpans) {
     const blot = Quill.find(span);
     if (!blot) continue;
-    const spanIndex = quill.getIndex(blot);
-    if (spanIndex === index) {
       found = span;
       break;
-    }
   }
 
   // 更新 Y 轴坐标
@@ -1603,6 +1641,7 @@ async function handleAddition(op, index) {
 };
 
 const applyRevision = () => {
+  console.log(3333)
   const revisions = [];
   const editor = quill.root;
 
@@ -1645,7 +1684,6 @@ const cancelRevision = () => {
   
   // 触发 updateRevision 事件，传递修订数组
   emits('updateRevision', revisions);
-  
   // 重置修订模式
   setRevisionMode(false);
 };
@@ -1755,25 +1793,34 @@ onUnmounted(() => {
 defineExpose({
   getCurrentUserInfo,
   usersInfo,
+  handleApplyRevision,
+  handleRejectRevision,
   insertCommentAtPosition,
   extractComments,
   setRevisionMode,
 });
 
-function handleApplyRevision(node) {
+function handleApplyRevision(revisionData) {
   const Quill = quillModule.value.default;
+  
+  // 通过 id 查找节点
+  const node = quill.root.querySelector(`[data-deleted][id="${revisionData.id}"], [data-new][id="${revisionData.id}"]`);
+  
+  if (!node) {
+    console.error(`未找到 ID 为 ${revisionData.id} 的节点`);
+    return;
+  }
+
   const blot = Quill.find(node);
   if (!blot) return;
+  
   const index = quill.getIndex(blot);
   const length = blot.length();
 
-  let revisionData;
   if (node.getAttribute('data-new') !== null) {
-    revisionData = JSON.parse(node.getAttribute('data-new'));
     quill.formatText(index, length, 'newContent', false);
     quill.formatText(index, length, { color: false });
   } else if (node.getAttribute('data-deleted') !== null) {
-    revisionData = JSON.parse(node.getAttribute('data-deleted'));
     quill.deleteText(index, length);
   }
 
@@ -1784,23 +1831,27 @@ function handleApplyRevision(node) {
   emits('updateRevision', revisions);
 }
 
-function handleRejectRevision(node) {
+function handleRejectRevision(revisionData) {
   const Quill = quillModule.value.default;
+  
+  // 通过 id 查找节点
+  const node = quill.root.querySelector(`[data-deleted][id="${revisionData.id}"], [data-new][id="${revisionData.id}"]`);
+  
+  if (!node) {
+    console.error(`未找到 ID 为 ${revisionData.id} 的节点`);
+    return;
+  }
+
   const blot = Quill.find(node);
   if (!blot) return;
+  
   const index = quill.getIndex(blot);
   const length = blot.length();
 
-  let revisionData;
   if (node.getAttribute('data-new') !== null) {
-    revisionData = JSON.parse(node.getAttribute('data-new'));
     // 对于新增内容，直接删除
     quill.deleteText(index, length, 'silent');
   } else if (node.getAttribute('data-deleted') !== null) {
-    revisionData = JSON.parse(
-      node.getAttribute('data-deleted') || 
-      node.dataset.deleted
-    );
     const text = revisionData.content;
     
     // 删除删除标记

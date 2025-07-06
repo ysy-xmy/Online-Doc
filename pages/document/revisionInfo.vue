@@ -51,7 +51,7 @@
 
 <script setup>
 import { ref, computed } from "vue";
-
+const emits =defineEmits(['apply','cancel'])
 const props = defineProps({
   revisions: {
     type: Array,
@@ -72,11 +72,12 @@ const formatTimestamp = (timestamp) => {
 
 const applyRevision = (revision) => {
   // 实现应用修订的逻辑
-  console.log("应用修订:", revision);
+  emits('apply',revision)
 };
 
 const rejectRevision = (revision) => {
   // 实现拒绝修订的逻辑
   console.log("拒绝修订:", revision);
+  emits('cancel',revision)
 };
 </script>

@@ -126,9 +126,9 @@
                   {{ form.emoji || generateEmojiFromName(form.name) }}
                 </div>
                 <div tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-64 grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
-                  <div 
-                    v-for="emoji in emojiList" 
-                    :key="emoji" 
+                  <div
+                    v-for="emoji in emojiList"
+                    :key="emoji"
                     class="text-xl cursor-pointer hover:bg-base-200 rounded p-1 flex items-center justify-center"
                     @click="selectCustomEmoji(emoji)"
                   >
@@ -136,21 +136,21 @@
                   </div>
                 </div>
               </div>
-              <input 
-                v-model="form.name" 
-                required 
-                maxlength="20" 
-                placeholder="请输入名称" 
+              <input
+                v-model="form.name"
+                required
+                maxlength="20"
+                placeholder="请输入名称"
                 class="input input-bordered w-full bg-base-100"
               />
             </div>
           </div>
           <div class="mb-4">
             <label class="block text-base-content font-semibold mb-1">简介</label>
-            <input 
-              v-model="form.desc" 
-              maxlength="50" 
-              placeholder="请输入简介" 
+            <input
+              v-model="form.description"
+              maxlength="50"
+              placeholder="请输入简介"
               class="input input-bordered w-full bg-base-100"
             />
           </div>
@@ -230,11 +230,11 @@
         <form @submit.prevent="onCreateDoc">
           <div class="mb-4">
             <label class="block text-base-content font-semibold mb-1">标题 <span class="text-red-500">*</span></label>
-            <input 
-              v-model="docForm.title" 
-              required 
-              maxlength="50" 
-              placeholder="请输入文档标题" 
+            <input
+              v-model="docForm.title"
+              required
+              maxlength="50"
+              placeholder="请输入文档标题"
               class="input input-bordered w-full bg-base-100"
             />
           </div>
@@ -324,7 +324,7 @@ onMounted(async () => {
 
 // Emoji 列表
 const emojiList = [
-  '📘', '📗', '📙', '📒', '📓', '📔', '📕', '📖', 
+  '📘', '📗', '📙', '📒', '📓', '📔', '📕', '📖',
   '🗂️', '📂', '📁', '📃', '📄', '📊', '📈', '📉',
   '🏠', '🏢', '🏭', '🏫', '🏨', '🏪', '🏩', '💼',
   '📚', '🎓', '🌐', '💡', '🔬', '🚀', '🌟', '🎨',
@@ -334,14 +334,14 @@ const emojiList = [
 // 根据名称生成 emoji 的函数
 function generateEmojiFromName(name) {
   if (!name) return '📁'
-  
+
   // 使用名称的哈希值来确定 emoji
   let hash = 0
   for (let i = 0; i < name.length; i++) {
     hash = ((hash << 5) - hash) + name.charCodeAt(i)
     hash = hash & hash // 转换为 32bit 整数
   }
-  
+
   // 使用哈希值选择 emoji
   return emojiList[Math.abs(hash) % emojiList.length]
 }
@@ -452,4 +452,4 @@ function getVisibilityText(visibility) {
 .btn-circle svg {
   display: block;
 }
-</style> 
+</style>

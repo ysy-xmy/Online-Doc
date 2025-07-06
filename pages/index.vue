@@ -455,7 +455,7 @@
                   </div>
                   <div class="flex-1">
                     <h5 class="font-medium">{{ workspace.name }}</h5>
-                    <p class="text-sm text-base-content/70">{{ workspace.description || '暂无描述' }}</p>
+                    <p class="text-sm text-base-content/70">{{ workspace.description && workspace.description.trim() ? workspace.description : '暂无描述' }}</p>
                     <div class="text-xs text-base-content/50 mt-1">
                       {{ workspace.documentCount || 0 }} 个文档
                     </div>

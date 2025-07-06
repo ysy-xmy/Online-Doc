@@ -108,8 +108,11 @@
                                     </div>
                                     <div class="flex-1">
                                         <div class="text-sm font-medium">{{ workspace.name }}</div>
-                                        <div v-if="workspace.description" class="text-xs text-base-content/60 truncate">
+                                        <div v-if="workspace.description && workspace.description.trim()" class="text-xs text-base-content/60 truncate">
                                             {{ workspace.description }}
+                                        </div>
+                                        <div v-else class="text-xs text-base-content/60 truncate">
+                                            暂无描述
                                         </div>
                                     </div>
                                 </div>
@@ -205,7 +208,7 @@
               </div>
           </div>
       </div>
-      
+
     <UserInfo v-if="isUserInfoVisible" @close="hideUserInfo" />
     <!-- 搜索结果弹窗 -->
     <div v-if="showSearchModal" class="modal modal-open">

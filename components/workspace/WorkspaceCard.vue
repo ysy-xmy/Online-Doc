@@ -1,12 +1,12 @@
 <template>
-  <div 
+  <div
     class="card card-bordered bg-base-100 hover:bg-base-200 hover:shadow-lg transition-all group border-2 border-base-200 shadow-sm relative cursor-pointer"
     @click="$emit('click', workspace)"
   >
     <!-- 删除按钮 -->
     <div v-if="showActions" class="absolute right-4 top-4 z-10">
-      <button 
-        class="btn btn-xs btn-circle bg-gray-200 hover:bg-red-500 text-gray-500 hover:text-white border-none transition-colors opacity-0 group-hover:opacity-100" 
+      <button
+        class="btn btn-xs btn-circle bg-gray-200 hover:bg-red-500 text-gray-500 hover:text-white border-none transition-colors opacity-0 group-hover:opacity-100"
         @click.stop="$emit('delete', workspace)"
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-4 h-4">
@@ -31,7 +31,7 @@
 
       <!-- 描述 -->
       <p class="text-sm opacity-70 mb-4 line-clamp-2">
-        {{ workspace.description || '暂无描述' }}
+        {{ workspace.description && workspace.description.trim() ? workspace.description : '暂无描述' }}
       </p>
 
       <!-- 统计信息 -->

@@ -12,7 +12,7 @@
           <div class="flex items-start space-x-3">
             <div class="flex-shrink-0">
               <img 
-                :src="comment.avatar || '/default-avatar.png'" 
+                :src="comment.comments[0].avatar || '/default-avatar.png'" 
                 :alt="comment.nickname" 
                 class="w-10 h-10 rounded-full object-cover" 
               />

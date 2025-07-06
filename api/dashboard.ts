@@ -1,9 +1,29 @@
 import { apiRequest, type ApiResponse } from './config'
 
-// 仪表板数据接口
+// 后端返回的数据结构（与DashboardDTO对应）
+export interface BackendDashboardData {
+  userSummary: {
+    totalWorkspaces: number
+    totalDocuments: number
+    totalComments: number
+    lastActivity: string
+  }
+  recentDocuments: DocumentSummary[]
+  recentWorkspaces: WorkspaceSummary[]
+  activitySummary?: {
+    todayDocuments: number
+    weekDocuments: number
+    monthDocuments: number
+    todayCollaborations: number
+    todayViews: number
+  }
+}
+
+// 前端使用的数据接口
 export interface DashboardData {
   totalWorkspaces: number
   totalDocuments: number
+  totalComments: number
   recentDocuments: DocumentSummary[]
   recentWorkspaces: WorkspaceSummary[]
   statistics: {
@@ -62,8 +82,8 @@ export interface UserSummary {
 
 // 仪表板API函数
 export const dashboardApi = {
-  // 获取用户仪表板数据
-  async getUserDashboard(): Promise<ApiResponse<DashboardData>> {
+  // 获取用户仪表板数据（返回后端数据结构）
+  async getUserDashboard(): Promise<ApiResponse<BackendDashboardData>> {
     return apiRequest('/dashboard')
   },
 

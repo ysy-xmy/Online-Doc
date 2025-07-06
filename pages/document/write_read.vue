@@ -2,6 +2,7 @@
     <!-- 文档信息菜单 -->
     <Doc-Menu
       v-model:documentName="documentName"
+      :documentId="documentId"
       :onlineUsers="onlineUsers"
       @save="saveDocument"
       ref="menuRef" />
@@ -63,6 +64,8 @@ import { ref, provide } from "vue";
 
 const route = useRoute();
 const documentId = route.params.id;
+
+console.log('write_read.vue - documentId:', documentId, 'type:', typeof documentId);
 const commentData = ref(null);
 const commentAlldata = ref(null)
 const documentContent = ref("");

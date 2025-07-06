@@ -188,6 +188,12 @@ const togglePublishStatus = async () => {
         isUpdatingStatus.value = true;
         const newStatus = isPublished.value ? 'DRAFT' : 'PUBLISHED';
 
+        console.log('切换发布状态:', {
+            documentId: props.documentId,
+            currentStatus: isPublished.value ? 'PUBLISHED' : 'DRAFT',
+            newStatus: newStatus
+        });
+
         const response = await documentApi.update(props.documentId, {
             status: newStatus
         });

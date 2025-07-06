@@ -283,8 +283,11 @@
                       <tr
                           v-for="doc in dashboardStore.recentDocuments"
                           :key="doc.id"
-                          class="cursor-pointer hover:bg-base-200 transition-all duration-200 group"
-                          @click="openDocument(doc.id)"
+                          :class="{
+                              'cursor-pointer hover:bg-base-200 transition-all duration-200 group': doc.status !== 'DELETED',
+                              'cursor-not-allowed opacity-60': doc.status === 'DELETED'
+                          }"
+                          @click="doc.status !== 'DELETED' ? openDocument(doc.id) : showDeletedDocumentAlert(doc)"
                       >
                           <td>
                               <div class="flex items-center space-x-2">
@@ -307,11 +310,10 @@
                               <div
                                   class="badge badge-sm whitespace-nowrap"
                                   :class="{
-                                      'badge-success':
-                                          doc.status === 'PUBLISHED',
+                                      'badge-success': doc.status === 'PUBLISHED',
                                       'badge-warning': doc.status === 'DRAFT',
-                                      'badge-error':
-                                          doc.status === 'ARCHIVED',
+                                      'badge-neutral': doc.status === 'ARCHIVED',
+                                      'badge-error': doc.status === 'DELETED',
                                   }"
                               >
                                   {{ getDocumentStatusText(doc.status) }}
@@ -382,7 +384,18 @@
                               </div>
                           </td>
                           <td>
-                              <button class="btn btn-ghost btn-xs">
+                              <button
+                                  v-if="doc.status === 'DELETED'"
+                                  class="btn btn-ghost btn-xs cursor-not-allowed opacity-50"
+                                  disabled
+                              >
+                                  已删除
+                              </button>
+                              <button
+                                  v-else
+                                  class="btn btn-ghost btn-xs"
+                                  @click.stop="openDocument(doc.id)"
+                              >
                                   查看
                               </button>
                           </td>
@@ -412,6 +425,116 @@
           </div>
       </div>
   </div>
+
+  <!-- 搜索模态窗口 -->
+  <div v-if="showSearchModal" class="modal modal-open">
+    <div class="modal-box w-11/12 max-w-4xl">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg">搜索结果</h3>
+        <button class="btn btn-sm btn-circle btn-ghost" @click="showSearchModal = false">✕</button>
+      </div>
+
+      <!-- 加载状态 -->
+      <div v-if="searchLoading" class="flex justify-center py-8">
+        <span class="loading loading-spinner loading-lg"></span>
+      </div>
+
+      <!-- 搜索结果 -->
+      <div v-else-if="searchResults" class="space-y-6">
+        <!-- 知识库结果 -->
+        <div v-if="searchResults.workspaces && searchResults.workspaces.length > 0">
+          <h4 class="font-semibold text-base mb-3 flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+            知识库 ({{ searchResults.workspaces.length }})
+          </h4>
+          <div class="grid gap-3">
+            <div v-for="workspace in searchResults.workspaces" :key="workspace.id"
+                 class="card bg-base-100 border hover:shadow-md cursor-pointer transition-all"
+                 @click="navigateTo(`/knowledgeBase/${workspace.id}`)">
+              <div class="card-body p-4">
+                <div class="flex items-center space-x-3">
+                  <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content rounded-full w-10">
+                      <span class="text-sm">{{ getInitial(workspace.name) }}</span>
+                    </div>
+                  </div>
+                  <div class="flex-1">
+                    <h5 class="font-medium">{{ workspace.name }}</h5>
+                    <p class="text-sm text-base-content/70">{{ workspace.description || '暂无描述' }}</p>
+                    <div class="text-xs text-base-content/50 mt-1">
+                      {{ workspace.documentCount || 0 }} 个文档
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 文档结果 -->
+        <div v-if="searchResults.documents && searchResults.documents.length > 0">
+          <h4 class="font-semibold text-base mb-3 flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            文档 ({{ searchResults.documents.length }})
+          </h4>
+          <div class="grid gap-3">
+            <div v-for="document in searchResults.documents" :key="document.id"
+                 class="card bg-base-100 border hover:shadow-md cursor-pointer transition-all"
+                 @click="openDocument(document.id)">
+              <div class="card-body p-4">
+                <div class="flex items-start space-x-3">
+                  <div class="flex-shrink-0">
+                    <div class="w-10 h-10 bg-accent/20 rounded-lg flex items-center justify-center">
+                      <svg class="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="flex-1">
+                    <h5 class="font-medium">{{ document.title }}</h5>
+                    <p class="text-sm text-base-content/70 mt-1">
+                      创建者: {{ document.creator?.nickname || document.creator?.username || '未知' }}
+                    </p>
+                    <div class="flex items-center space-x-4 text-xs text-base-content/50 mt-2">
+                      <span class="badge badge-sm" :class="{
+                        'badge-success': document.status === 'PUBLISHED',
+                        'badge-warning': document.status === 'DRAFT',
+                        'badge-info': document.status === 'ARCHIVED'
+                      }">
+                        {{ document.status === 'PUBLISHED' ? '已发布' :
+                           document.status === 'DRAFT' ? '草稿' :
+                           document.status === 'ARCHIVED' ? '已归档' : document.status }}
+                      </span>
+                      <span>{{ new Date(document.updatedAt).toLocaleDateString() }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 无结果 -->
+        <div v-if="(!searchResults.workspaces || searchResults.workspaces.length === 0) &&
+                   (!searchResults.documents || searchResults.documents.length === 0)"
+             class="text-center py-8">
+          <svg class="w-16 h-16 mx-auto text-base-content/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          <p class="text-lg mb-2">未找到相关内容</p>
+          <p class="text-sm text-base-content/70">尝试使用其他关键词搜索</p>
+        </div>
+      </div>
+
+      <div class="modal-action">
+        <button class="btn" @click="showSearchModal = false">关闭</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -419,6 +542,7 @@ import { ref, onMounted } from "vue";
 import { useDashboardStore } from "~/stores/dashboard";
 import { useWorkspaceStore } from "~/stores/workspace";
 import { useDocumentStore } from "~/stores/documentStore";
+import { useSearchStore } from "~/stores/search";
 
 definePageMeta({
   layout: "default",
@@ -427,14 +551,49 @@ definePageMeta({
 const dashboardStore = useDashboardStore();
 const workspaceStore = useWorkspaceStore();
 const documentStore = useDocumentStore();
+const searchStore = useSearchStore();
 
 const searchKeyword = ref("");
 const showCreateDocModal = ref(false);
+const showSearchModal = ref(false);
+const searchResults = ref(null);
+const searchLoading = ref(false);
+
+// Toast 提示函数
+const showToast = (message, type = 'info') => {
+    // 创建 toast 元素
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} fixed top-4 right-4 z-50 w-auto max-w-md shadow-lg`;
+    toast.innerHTML = `
+        <div class="flex items-center">
+            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                ${type === 'error' ?
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>' :
+                    type === 'warning' ?
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>' :
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+                }
+            </svg>
+            <span>${message}</span>
+        </div>
+    `;
+
+    document.body.appendChild(toast);
+
+    // 3秒后自动移除
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
+};
 
 // 页面初始化
 onMounted(async () => {
   try {
+      console.log('主页开始加载仪表板数据...')
       await dashboardStore.fetchUserDashboard();
+      console.log('主页仪表板数据加载完成:', dashboardStore.userDashboard)
   } catch (error) {
       console.error("初始化仪表板失败:", error);
       dashboardStore.setError("无法加载仪表板数据");
@@ -443,17 +602,52 @@ onMounted(async () => {
 
 // 打开文档
 const { $axios } = useNuxtApp();
-const openDocument = (id) => {
-    $axios(`/api/documents/${id}`, {
-        method: "GET",
-    }).then((res) => {
-        //这个接口需要添加一个知识库ID
+const openDocument = async (id) => {
+    try {
+        console.log('尝试打开文档:', id);
+
+        const res = await $axios(`/api/documents/${id}`, {
+            method: "GET",
+        });
+
+        console.log('文档详情响应:', res.data);
+
+        // 检查文档状态
+        if (res.data.status === 'DELETED') {
+            // 显示已删除提示
+            showToast('该文档已被删除，无法访问', 'error');
+            // 刷新仪表板数据以更新最近文档列表
+            await refreshDashboard();
+            return;
+        }
+
+        // 设置知识库信息
         workspaceStore.workspaceId = res.data.workspace.id;
         workspaceStore.currentWorkspace = res.data.workspace;
-        // console.log("res",res.data);
+
+        // 跳转到文档页面
         navigateTo(`/document/${res.data.id}`);
-    });
-    // navigateTo(`/document/${id}`)
+
+    } catch (error) {
+        console.error('获取文档详情失败:', error);
+
+        // 根据错误类型显示不同的提示
+        if (error.response?.status === 404) {
+            showToast('文档不存在或已被删除', 'error');
+        } else if (error.response?.status === 403) {
+            showToast('您没有权限访问该文档', 'warning');
+        } else {
+            showToast('无法访问该文档，请稍后重试', 'error');
+        }
+
+        // 刷新仪表板数据
+        await refreshDashboard();
+    }
+};
+
+// 处理已删除文档的点击
+const showDeletedDocumentAlert = (doc) => {
+    showToast(`文档"${doc.title || '未命名文档'}"已被删除，无法访问`, 'warning');
 };
 
 // 刷新仪表板
@@ -468,10 +662,26 @@ const refreshDashboard = async () => {
 };
 
 // 搜索处理
-const handleSearch = () => {
+const handleSearch = async () => {
   if (searchKeyword.value.trim()) {
-      // 跳转到搜索页面或执行搜索逻辑
-      navigateTo(`/search?q=${encodeURIComponent(searchKeyword.value)}`);
+      try {
+          searchLoading.value = true;
+          showSearchModal.value = true;
+
+          // 执行搜索
+          const result = await searchStore.performGlobalSearch({
+              keyword: searchKeyword.value.trim(),
+              type: 'ALL'
+          });
+
+          searchResults.value = result;
+          // 清空搜索框
+          searchKeyword.value = '';
+      } catch (error) {
+          console.error('搜索失败:', error);
+      } finally {
+          searchLoading.value = false;
+      }
   }
 };
 

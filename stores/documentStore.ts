@@ -67,8 +67,12 @@ export const useDocumentStore = defineStore('documentStore', {
         this.setLoading(true)
         this.clearError()
 
+        console.log('DocumentStore: 开始获取文档列表', { workspaceId, params })
+
         const response = await documentApi.getByWorkspace(workspaceId, params)
-        
+
+        console.log('DocumentStore: API响应', response)
+
         if (response.code === 'SUCCESS') {
           if (params.refresh || params.page === 0) {
             // 刷新或第一页，替换数据
@@ -77,16 +81,23 @@ export const useDocumentStore = defineStore('documentStore', {
             // 加载更多，追加数据
             this.documents.push(...response.data.documents)
           }
-          
+
           this.pagination = {
             total: response.data.total,
             page: response.data.page,
             size: response.data.size
           }
+
+          console.log('DocumentStore: 文档列表更新完成', {
+            documentsCount: this.documents.length,
+            total: this.pagination.total
+          })
         } else {
+          console.error('DocumentStore: API返回错误', response)
           throw new Error(response.message || '获取文档列表失败')
         }
       } catch (error) {
+        console.error('DocumentStore: 获取文档列表失败', error)
         this.setError(error instanceof Error ? error.message : '获取文档列表失败')
       } finally {
         this.setLoading(false)

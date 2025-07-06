@@ -240,11 +240,27 @@ const docForm = ref({
 // 页面初始化
 onMounted(async () => {
   const workspaceId = Number(route.params.id)
+  console.log('知识库页面初始化，workspaceId:', workspaceId)
+
   if (workspaceId) {
-    // 获取知识库详情
-    await workspaceStore.fetchWorkspaceById(workspaceId)
-    // 获取文档列表
-    await documentStore.fetchDocumentsByWorkspace(workspaceId, { refresh: true })
+    try {
+      // 获取知识库详情
+      console.log('开始获取知识库详情...')
+      await workspaceStore.fetchWorkspaceById(workspaceId)
+      console.log('知识库详情获取完成:', workspaceStore.currentWorkspace)
+
+      // 获取文档列表
+      console.log('开始获取文档列表...')
+      await documentStore.fetchDocumentsByWorkspace(workspaceId, { refresh: true })
+      console.log('文档列表获取完成:', documentStore.documents)
+      console.log('文档数量:', documentStore.documents.length)
+      console.log('加载状态:', documentStore.loading)
+      console.log('错误信息:', documentStore.error)
+    } catch (error) {
+      console.error('页面初始化失败:', error)
+    }
+  } else {
+    console.error('无效的知识库ID:', route.params.id)
   }
 })
 

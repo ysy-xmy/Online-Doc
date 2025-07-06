@@ -202,29 +202,70 @@ const hideUserInfo = () => {
 };
 
 const { $axios } = useNuxtApp();
-onMounted(() => {
+onMounted(async () => {
+  console.log("fullscreen布局初始化");
+  console.log("当前文档ID:", currentDocumentId.value);
+  console.log("workspaceStore.workspaceId:", workspaceStore.workspaceId);
+
+  // 如果有当前文档ID，先获取文档信息来确定知识库ID
+  if (currentDocumentId.value && !workspaceStore.workspaceId) {
+    try {
+      console.log("通过文档ID获取知识库信息");
+      const docResponse = await $axios(`/api/documents/${currentDocumentId.value}`, {
+        method: "GET",
+      });
+      console.log("文档详情响应:", docResponse);
+
+      if (docResponse.data && docResponse.data.workspace) {
+        workspaceStore.workspaceId = docResponse.data.workspace.id;
+        localStorage.setItem("workspaceId", workspaceStore.workspaceId);
+        console.log("从文档信息中获取到知识库ID:", workspaceStore.workspaceId);
+      }
+    } catch (error) {
+      console.error("获取文档详情失败:", error);
+    }
+  }
+
   //对知识库ID进行判断（解决原地刷新问题）
   if (workspaceStore.workspaceId != 0) {
-    console.log("111", workspaceStore.workspaces);
-
+    console.log("使用现有的workspaceId:", workspaceStore.workspaceId);
     localStorage.setItem("workspaceId", workspaceStore.workspaceId);
-
     // 获取知识库对应的文档列表
     getList();
   } else {
-    workspaceStore.workspaceId = localStorage.getItem("workspaceId");
-
-    // 获取知识库对应的文档列表
-    getList();
+    const savedWorkspaceId = localStorage.getItem("workspaceId");
+    if (savedWorkspaceId) {
+      workspaceStore.workspaceId = savedWorkspaceId;
+      console.log("从localStorage恢复workspaceId:", workspaceStore.workspaceId);
+      // 获取知识库对应的文档列表
+      getList();
+    } else {
+      console.warn("无法获取知识库ID，无法加载文档列表");
+    }
   }
 
   // 获取知识库对应的文档列表
   function getList() {
+    console.log("开始获取文档列表，workspaceId:", workspaceStore.workspaceId);
+
+    if (!workspaceStore.workspaceId) {
+      console.error("workspaceId 为空，无法获取文档列表");
+      return;
+    }
+
     $axios(`/api/documents/workspace/${workspaceStore.workspaceId}`, {
       method: "GET",
     }).then((res) => {
-      console.log("知识库对应的文档列表:", res.data);
-      documents.value = res.data.documents;
+      console.log("知识库对应的文档列表API响应:", res);
+      if (res.data && res.data.documents) {
+        documents.value = res.data.documents;
+        console.log("文档列表设置成功，数量:", documents.value.length);
+      } else {
+        console.warn("API响应中没有documents字段:", res.data);
+      }
+    }).catch((error) => {
+      console.error("获取文档列表失败:", error);
+      console.error("错误详情:", error.response || error.message);
     });
   }
 });

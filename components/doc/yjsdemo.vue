@@ -1555,68 +1555,79 @@ async function handleAddition(op, index) {
   // 获取编辑器
   const editor = quill.root;
   
-  // 使用 ID 查找最近的新增内容节点
-  const existingNewContentMarks = Array.from(editor.querySelectorAll('[data-new]'));
-  let existingNode = null;
-  let existingData = null;
+  // 1. 计算合并区间
+  let mergeStart = index;
+  let mergeLen = content.length;
 
-  // 遍历查找最近的新增内容节点
-  for (const node of existingNewContentMarks) {
-    const blotData = JSON.parse(
-      node.getAttribute('data-new') || 
-      node.dataset.new
-    );
-
-    // 检查是否是同一个用户的新增内容，并且在相近的时间戳内
+  // 向前合并
+  while (mergeStart > 0) {
+    const [prevLeaf] = quill.getLeaf(mergeStart - 1);
     if (
-      blotData.userId === userInfo.value.id  // 5秒内的新增内容
+      prevLeaf &&
+      prevLeaf.parent &&
+      prevLeaf.parent.domNode &&
+      prevLeaf.parent.domNode.dataset.new !== undefined
     ) {
-      existingNode = node;
-      existingData = blotData;
+      const prevLen = prevLeaf.parent.length();
+      mergeStart -= prevLen;
+      mergeLen += prevLen;
+    } else {
       break;
     }
   }
 
-  // 准备新的内容数据
-  const newContentData = {
-    id: existingData ? existingData.id : `add_${Date.now()}`,
-    type: 'add',
-    content: existingData 
-      ? existingData.content + content 
-      : content,
-    timestamp: Date.now(),
-    userId: userInfo.value.id,
-    hint: `新增：${existingData ? existingData.content + content : content}`,
-    yPosition: null,
-    range: {
-      index: existingData ? existingData.range.index : index,
-      length: (existingData ? existingData.content : '') .length + content.length
-    }
-  };
-
-  // 如果存在现有的新增内容节点，先删除
-  if (existingNode) {
-    const blot = Quill.find(existingNode);
-    if (blot) {
-      const blotLength = blot.length();
-      quill.deleteText(index, blotLength, 'silent');
+  // 向后合并
+  let tempIndex = index + content.length;
+  while (true) {
+    const [nextLeaf] = quill.getLeaf(tempIndex);
+    if (
+      nextLeaf &&
+      nextLeaf.parent &&
+      nextLeaf.parent.domNode &&
+      nextLeaf.parent.domNode.dataset.new !== undefined
+    ) {
+      const nextLen = nextLeaf.parent.length();
+      mergeLen += nextLen;
+      tempIndex += nextLen;
+    } else {
+      break;
     }
   }
 
-  // 插入新的文本
-  quill.insertText(index, content, 'silent');
+  // 2. 先移除合并区间的所有 newContent
+  quill.formatText(mergeStart, mergeLen, 'newContent', false);
 
-  // 插入新的内容
-  quill.formatText(index, newContentData.content.length, 'newContent', newContentData);
+  // 3. 等待内容刷新
+  await nextTick();
 
-  // 重新获取最新的新增节点
-  const updatedAllSpans = Array.from(editor.querySelectorAll('[data-new]'));
+  // 准备新的内容数据
+  const newContentData = {
+    id: `add_${Date.now()}`,
+    type: 'add',
+    content: quill.getText(mergeStart, mergeLen),
+    timestamp: Date.now(),
+    userId: userInfo.value.id,
+    hint: `新增：${quill.getText(mergeStart, mergeLen)}`,
+    yPosition: null,
+    range: {
+      index: mergeStart,
+      length: mergeLen
+    }
+  };
+
+  // 4. 先整体包裹
+  quill.formatText(mergeStart, mergeLen, 'newContent', newContentData);
+
+  await nextTick();
+
+  // 5. 用 DOM 查询最新的 span[data-new]，用 Quill.find 获取 Blot，再 getIndex
+  const allSpans = Array.from(editor.querySelectorAll('[data-new]'));
   let found = null;
-  for (const span of updatedAllSpans) {
+  for (const span of allSpans) {
     const blot = Quill.find(span);
     if (!blot) continue;
-    const spanData = JSON.parse(span.getAttribute('data-new'));
-    if (spanData.id === newContentData.id) {
+    const spanIndex = quill.getIndex(blot);
+    if (spanIndex === mergeStart) {
       found = span;
       break;
     }
@@ -1624,10 +1635,12 @@ async function handleAddition(op, index) {
 
   // 更新 Y 轴坐标
   if (found) {
-    const bounds = quill.getBounds(index);
+    const bounds = quill.getBounds(mergeStart);
     newContentData.yPosition = bounds.top;
     
+    // 同时设置 setAttribute 和 dataset
     found.setAttribute('data-new', JSON.stringify(newContentData));
+    found.setAttribute('id', newContentData.id);
     found.dataset.new = JSON.stringify(newContentData);
     
     // 触发 updateRevision 事件，传递完整的修订数组
@@ -1648,6 +1661,9 @@ async function handleAddition(op, index) {
   } catch (error) {
     console.error("同步 Delta 时出错:", error);
   }
+
+  // 6. 移动光标到合并区块起点
+  quill.setSelection(mergeStart, 0, 'silent');
 }
 
 const applyRevision = () => {

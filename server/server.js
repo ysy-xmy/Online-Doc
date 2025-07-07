@@ -6,13 +6,40 @@ import * as Y from 'yjs'          // Yjs 协同编辑框架
 // 创建 HTTP 服务器
 // 当客户端通过 HTTP 访问时，返回服务器状态信息
 const server = http.createServer((request, response) => {
+  // 设置 CORS 头
+  response.setHeader('Access-Control-Allow-Origin', '*')
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+  response.setHeader('Access-Control-Allow-Credentials', 'true')
+  
+  // 处理预检请求
+  if (request.method === 'OPTIONS') {
+    response.writeHead(200)
+    response.end()
+    return
+  }
+  
   response.writeHead(200, { 'Content-Type': 'text/plain' })
   response.end('Yjs WebSocket 服务器正在运行')
 })
 
 // 创建 WebSocket 服务器，附加到 HTTP 服务器上
 // 这样可以在同一个端口同时处理 HTTP 和 WebSocket 连接
-const wss = new WebSocketServer({ server })
+const wss = new WebSocketServer({ 
+  server,
+  // 添加 CORS 配置
+  verifyClient: (info) => {
+    // 允许所有来源的WebSocket连接
+    console.log('WebSocket 连接请求来自:', info.origin)
+    console.log('请求头:', info.req.headers)
+    return true
+  },
+  // 设置 WebSocket 升级请求的处理
+  handleProtocols: (protocols, req) => {
+    console.log('WebSocket 协议:', protocols)
+    return protocols[0] || ''
+  }
+})
 
 // 存储房间的文档状态
 // 每个房间对应一个独立的 Yjs 文档实例
@@ -67,6 +94,8 @@ const getAllRooms = () => {
 // 监听 WebSocket 连接事件
 wss.on('connection', (ws, req) => {
   console.log('新的客户端连接')
+  console.log('请求URL:', req.url)
+  console.log('请求头:', req.headers)
 
   // 解析房间名（从 URL 或查询参数）
   // 支持多种方式获取房间名：
@@ -215,7 +244,7 @@ server.on('request', (req, res) => {
 })
 
 // 服务器配置
-const PORT = 1235  // 服务器监听端口
+const PORT = 1234  // 服务器监听端口
 
 // 启动服务器
 server.listen(PORT, () => {
@@ -232,6 +261,7 @@ server.listen(PORT, () => {
   console.log(`服务器启动时间: ${currentTime}`)
   console.log(`房间清理间隔: 5分钟`)
   console.log(`空闲房间清理阈值: 30分钟`)
+  console.log(`CORS 已启用，允许所有来源`)
 })
 
 // 优雅关闭

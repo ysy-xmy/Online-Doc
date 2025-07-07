@@ -8,7 +8,7 @@ import "highlight.js/styles/atom-one-dark.min.css";
 import hljs from "highlight.js/lib/common";
 import { useUserStore } from "@/stores/user";
 import { useDocumentStore as useDocStore } from "@/stores/document";
-import { useEditorStore } from '../../stores/editorStore.js';
+import { useEditorStore } from "../../stores/editorStore.js";
 
 const userStore = useUserStore();
 const userInfo = computed(() => userStore.userInfo);
@@ -130,47 +130,47 @@ const saveHistoricalVersion = async () => {
     const content = getEditorContent(); // 获取编辑器内容
     const contentJson = JSON.stringify(quill.getContents()); // 获取编辑器内容的 JSON 格式
     // 打印原始数据
-    console.log('获取的数据:', {
+    console.log("获取的数据:", {
       documentId,
       content,
-      contentJson
+      contentJson,
     });
     // 构建请求体
     //const requestBody = JSON.stringify({ content, contentJson });
     const requestBody = JSON.stringify({
       content,
       contentJson,
-      "triggerType": "AUTO_SAVE", // 触发类型
-      "clientId": "web-123456" // 客户端 ID
+      triggerType: "AUTO_SAVE", // 触发类型
+      clientId: "web-123456", // 客户端 ID
     });
-    console.log('实际发送的请求体:', requestBody);
+    console.log("实际发送的请求体:", requestBody);
     // 构造API URL
     const apiUrl = `http://8.134.200.53:8080/api/documents/${documentId}/versions/auto-save`;
     // 从cookie中获取token
-    const tokenCookie = useCookie('token');
+    const tokenCookie = useCookie("token");
     const token = tokenCookie.value;
     const headers = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json",
     };
     console.log("headers:", headers);
     const { data, error } = await useFetch(apiUrl, {
       headers,
-      method: 'POST',
-      body: requestBody
+      method: "POST",
+      body: requestBody,
     });
     if (error.value) {
-      throw new Error(error.value.message || '自动保存版本失败');
+      throw new Error(error.value.message || "自动保存版本失败");
     }
     if (!data.value || !data.value.success) {
-      throw new Error('接口返回数据格式不正确');
+      throw new Error("接口返回数据格式不正确");
     }
-    console.log('自动保存版本成功:', data.value);
+    console.log("自动保存版本成功:", data.value);
     // 保存成功后更新上次保存时间
     lastSaveTime.value = Date.now();
     return data.value;
   } catch (error) {
-    console.error('自动保存版本失败:', error);
+    console.error("自动保存版本失败:", error);
     throw error;
   }
 };
@@ -207,10 +207,8 @@ const renderRemoteCursors = () => {
   );
 
   users.forEach(([clientID, state]) => {
-    // 如果已经有该用户的光标，只保留最后一个
-    if (!userCursorMap.has(state.user.id)) {
-      userCursorMap.set(state.user.id, { clientID, state });
-    }
+    // 将用户状态添加到 userStateMap 中
+    userStateMap.set(state.user.id, { clientID, state });
   });
 
   // 渲染去重后的用户光标和选区
@@ -220,7 +218,10 @@ const renderRemoteCursors = () => {
       const selection = state.selection;
 
       // 渲染光标
-      if (user.cursorPosition !== undefined && user.cursorPosition !== null) {
+      if (
+        user.cursorPosition !== undefined &&
+        user.cursorPosition !== null
+      ) {
         let bounds;
         try {
           bounds = quill.getBounds(user.cursorPosition);
@@ -229,7 +230,11 @@ const renderRemoteCursors = () => {
           return;
         }
 
-        if (!bounds || bounds.left === undefined || bounds.top === undefined) {
+        if (
+          !bounds ||
+          bounds.left === undefined ||
+          bounds.top === undefined
+        ) {
           console.warn("无效的光标边界:", bounds);
           return;
         }
@@ -268,7 +273,11 @@ const renderRemoteCursors = () => {
       }
 
       // 渲染选区
-      if (selection && selection.index !== undefined && selection.length > 0) {
+      if (
+        selection &&
+        selection.index !== undefined &&
+        selection.length > 0
+      ) {
         console.log("渲染选区:", selection, "用户:", user.name);
 
         let bounds;
@@ -302,8 +311,10 @@ const renderRemoteCursors = () => {
         selectionElement.style.top = `${bounds.top - scrollTop}px`;
         selectionElement.style.width = `${bounds.width}px`;
         selectionElement.style.height = `${bounds.height}px`;
-        selectionElement.style.backgroundColor = `${user.color || "blue"}20`; // 半透明背景
-        selectionElement.style.border = `2px solid ${user.color || "blue"}`;
+        selectionElement.style.backgroundColor = `${user.color || "blue"
+          }20`; // 半透明背景
+        selectionElement.style.border = `2px solid ${user.color || "blue"
+          }`;
         selectionElement.style.borderRadius = "2px";
         selectionElement.style.zIndex = "999";
         selectionElement.style.pointerEvents = "none";
@@ -364,15 +375,23 @@ const cleanupInvalidSelections = () => {
   existingSelections.forEach((selectionElement) => {
     try {
       // 检查选区是否仍然有效
-      const clientID = selectionElement.classList.contains("remote-selection-")
-        ? selectionElement.className.match(/remote-selection-(\d+)/)?.[1]
+      const clientID = selectionElement.classList.contains(
+        "remote-selection-"
+      )
+        ? selectionElement.className.match(
+          /remote-selection-(\d+)/
+        )?.[1]
         : null;
 
       if (clientID) {
         const allStates = awareness.getStates();
         const state = allStates.get(parseInt(clientID));
 
-        if (!state || !state.selection || state.selection.length === 0) {
+        if (
+          !state ||
+          !state.selection ||
+          state.selection.length === 0
+        ) {
           selectionElement.remove();
           console.log("清理无效选区:", clientID);
         }
@@ -412,7 +431,9 @@ const initCollaborativeEditor = async () => {
         // 如果是完整的对象，包括 node 属性
         if (value.node) {
           // 复制单一属性
-          commentData = JSON.parse(value.node.getAttribute("data-comment"));
+          commentData = JSON.parse(
+            value.node.getAttribute("data-comment")
+          );
         } else {
           // 直接使用传入的对象
           commentData = value;
@@ -447,7 +468,8 @@ const initCollaborativeEditor = async () => {
           (comment, index, self) =>
             index ===
             self.findIndex(
-              (t) => t.id === comment.id && t.text === comment.text
+              (t) =>
+                t.id === comment.id && t.text === comment.text
             )
         );
 
@@ -588,17 +610,17 @@ const initCollaborativeEditor = async () => {
     readOnly: props.isReadOnly,
     placeholder: placeholderText,
   });
-// 新添加 加载 store 中的内容到编辑器
+  // 新添加 加载 store 中的内容到编辑器
   if (editorStore.editorContent) {
     quill.root.innerHTML = editorStore.editorContent;
-    console.log('已从 store 加载内容到编辑器');
+    console.log("已从 store 加载内容到编辑器");
   }
   // 新添加文本变化事件监听器
-  quill.on('text-change', () => {
+  quill.on("text-change", () => {
     const content = getEditorContent();
     editorStore.setEditorContent(content);
-    console.log('当前编辑内容:', content);
-    console.log('当前存储内容:', editorStore.editorContent);
+    console.log("当前编辑内容:", content);
+    console.log("当前存储内容:", editorStore.editorContent);
 
     // 记录文本变化时的时间
     const currentTime = Date.now();
@@ -647,10 +669,12 @@ const initCollaborativeEditor = async () => {
     }, autoSaveInterval);
   };
 
-// 组件卸载时清理定时器
+  // 组件卸载时清理定时器
   onUnmounted(() => {
     // 清理滚动监听器
-    document.querySelector(".ql-editor")?.removeEventListener("scroll", handleEditorScroll);
+    document
+      .querySelector(".ql-editor")
+      ?.removeEventListener("scroll", handleEditorScroll);
 
     // 移除键盘事件监听器
     if (quill && quill.root) {
@@ -713,7 +737,9 @@ const initCollaborativeEditor = async () => {
       event.stopPropagation();
 
       // 从单一属性中提取评论信息
-      const commentInfo = JSON.parse(commentMark.getAttribute("data-comment"));
+      const commentInfo = JSON.parse(
+        commentMark.getAttribute("data-comment")
+      );
 
       // 打开评论面板并传递评论信息
       emits("openCommentPanel", commentInfo);
@@ -760,8 +786,6 @@ const initCollaborativeEditor = async () => {
   }
 
   provider = new websocketModule.value.WebsocketProvider(
-    // "ws://8.134.200.53:1234",
-    // "ws://8.134.200.53:8080",
     "ws://8.134.200.53:1234",
     // "ws://localhost:1234",
     roomName,
@@ -869,7 +893,8 @@ const initCollaborativeEditor = async () => {
     awareness.setLocalStateField("user", {
       name: userInfo.value.username || "未命名用户",
       id: userInfo.value.id || Math.random().toString(36).substr(2, 9),
-      color: userInfo.value.color || `hsl(${Math.random() * 360}, 70%, 50%)`,
+      color:
+        userInfo.value.color || `hsl(${Math.random() * 360}, 70%, 50%)`,
       timestamp: Date.now(),
       cursorPosition: null,
       cursorLength: 0,
@@ -879,12 +904,15 @@ const initCollaborativeEditor = async () => {
   // 文本变化监听
   quill.on("text-change", (delta, oldDelta, source) => {
     // 检测删除操作
-    const hasDeleteOperation = delta.ops.some((op) => op.delete !== undefined);
+    const hasDeleteOperation = delta.ops.some(
+      (op) => op.delete !== undefined
+    );
 
     if (hasDeleteOperation) {
       console.log("检测到文本删除操作，清除远程选区");
       // 清除所有远程选区
-      const existingSelections = document.querySelectorAll(".remote-selection");
+      const existingSelections =
+        document.querySelectorAll(".remote-selection");
       existingSelections.forEach((element) => element.remove());
     }
   });
@@ -948,7 +976,10 @@ const initCollaborativeEditor = async () => {
       if (userSelectionRange) {
         try {
           // 使用 formatText 清除背景色
-          quill.formatText(userSelectionRange.index, userSelectionRange.length);
+          quill.formatText(
+            userSelectionRange.index,
+            userSelectionRange.length
+          );
           userSelectionRange = null;
         } catch (error) {
           console.error("清除背景色时出错:", error);
@@ -975,12 +1006,14 @@ const initCollaborativeEditor = async () => {
     });
 
     // 详细打印所有用户状态和光标位置
-    const users = Array.from(allStates.entries()).map(([clientID, state]) => ({
-      clientID,
-      user: state.user,
-      cursorPosition: state.user?.cursorPosition,
-      cursorLength: state.user?.cursorLength,
-    }));
+    const users = Array.from(allStates.entries()).map(
+      ([clientID, state]) => ({
+        clientID,
+        user: state.user,
+        cursorPosition: state.user?.cursorPosition,
+        cursorLength: state.user?.cursorLength,
+      })
+    );
 
     // 直接更新用户列表到 store
     const formattedUsers = Array.from(
@@ -1039,7 +1072,9 @@ const initCollaborativeEditor = async () => {
     if (awareness) {
       awareness.setLocalStateField("user", {
         name: localUser.value.name,
-        id: localUser.value.id || Math.random().toString(36).substr(2, 9),
+        id:
+          localUser.value.id ||
+          Math.random().toString(36).substr(2, 9),
         color: localUser.value.color,
         timestamp: Date.now(),
         cursorPosition: null,
@@ -1072,7 +1107,10 @@ const initCollaborativeEditor = async () => {
     if (event.data && typeof event.data === "string") {
       try {
         const message = JSON.parse(event.data);
-        if (message.type === "roomInfo" || message.type === "roomStatus") {
+        if (
+          message.type === "roomInfo" ||
+          message.type === "roomStatus"
+        ) {
           roomInfo.value = message.data;
           console.log("房间信息更新:", roomInfo.value);
         }
@@ -1115,7 +1153,9 @@ const initCollaborativeEditor = async () => {
       localUser.value = {
         name: newUserInfo.username || "未命名用户",
         id: newUserInfo.id || "",
-        color: newUserInfo.color || `hsl(${Math.random() * 360}, 70%, 50%)`,
+        color:
+          newUserInfo.color ||
+          `hsl(${Math.random() * 360}, 70%, 50%)`,
         timestamp: Date.now(),
         cursorPosition: null,
         cursorLength: 0,
@@ -1137,7 +1177,9 @@ const initCollaborativeEditor = async () => {
           // 允许复制(Ctrl+C/Cmd+C)、粘贴(Ctrl+V/Cmd+V)、选择全文档(Ctrl+A/Cmd+A)
           if (
             (event.ctrlKey || event.metaKey) &&
-            (event.key === "c" || event.key === "v" || event.key === "a")
+            (event.key === "c" ||
+              event.key === "v" ||
+              event.key === "a")
           ) {
             return; // 不阻止快捷键
           }
@@ -1390,37 +1432,37 @@ const extractComments = () => {
 
   // 获取编辑器的所有节点
   const editorContent = quill.root;
-  const commentMarks = editorContent.querySelectorAll('[data-comment]');
+  const commentMarks = editorContent.querySelectorAll("[data-comment]");
 
   const allComments = [];
 
   commentMarks.forEach((mark) => {
     try {
-      const commentData = JSON.parse(mark.getAttribute('data-comment'));
-      
+      const commentData = JSON.parse(mark.getAttribute("data-comment"));
+
       // 打印每个评论的详细信息
-      console.log('评论详情:', {
+      console.log("评论详情:", {
         selectionId: commentData.selectionId,
         range: commentData.range,
-        selectedText: commentData.selectedText || '',
+        selectedText: commentData.selectedText || "",
         createTime: commentData.createTime,
         color: commentData.color,
-        comments: commentData.comments.map(comment => ({
+        comments: commentData.comments.map((comment) => ({
           id: comment.id,
           text: comment.text,
           authorId: comment.authorId,
           nickname: comment.nickname,
-          timestamp: comment.timestamp
-        }))
+          timestamp: comment.timestamp,
+        })),
       });
 
       allComments.push(commentData);
     } catch (error) {
-      console.error('解析评论时出错:', error);
+      console.error("解析评论时出错:", error);
     }
   });
 
-  console.log('文档中所有评论:', allComments);
+  console.log("文档中所有评论:", allComments);
   return allComments;
 };
 
@@ -1537,7 +1579,9 @@ defineExpose({
           <button class="ql-code-block" title="代码块">代码块</button>
         </div>
         <div class="toolbar-group">
-          <button class="ql-comment-icon" @click="addComment">💬</button>
+          <button class="ql-comment-icon" @click="addComment">
+            💬
+          </button>
         </div>
       </div>
     </div>

@@ -418,16 +418,7 @@ onMounted(() => {
           });
   } else {
       // 从localStorage加载用户信息
-      const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-      console.log('从localStorage加载用户信息:', userInfo);
-      userStore.setUserInfo({
-          id: userInfo.id || "",
-          username: userInfo.username || "",
-          nickname: userInfo.nickname || "",
-          avatar: userInfo.avatar || "",
-          email: userInfo.email || "",
-          color: userInfo.color || `hsl(${Math.random() * 360}, 70%, 50%)`,
-      });
+  
   }
 
   // 添加调试信息

@@ -60,102 +60,26 @@ onMounted(() => {
   fetchCollaborators();
 });
 
-// 重试加载
-const retryLoad = () => {
-  isLoading.value = true;
-  hasError.value = false;
-  errorMessage.value = '';
-  fetchCollaborators();
-};
-
-// 获取当前用户文档权限
+// 获取协作者权限
 const fetchCollaborators = async () => {
   try {
-    isLoading.value = true;
-    hasError.value = false;
-
-    console.log("开始获取当前用户文档权限，documentId:", documentId);
-    console.log("当前用户信息:", {
-      username,
-      currentUserId,
-      currentUserIdNumber,
-      userIdType: typeof currentUserId,
-      userIdNumberType: typeof currentUserIdNumber
-    });
-
-    try {
-      // 首先尝试使用正确的权限检查API
-      const response = await documentShareApi.getCurrentUserPermissions(documentId);
-      console.log("权限API响应:", response);
-
-      // 根据API返回的权限信息判断是否有写入权限
-      const permissions = response.data;
-      hasWritePermission.value = permissions.canWrite || false;
-
-      console.log("权限详情:", {
-        canRead: permissions.canRead,
-        canWrite: permissions.canWrite,
-        canDelete: permissions.canDelete,
-        canManage: permissions.canManage,
-        canComment: permissions.canComment,
-        role: permissions.role,
-        userId: permissions.userId,
-        documentId: permissions.documentId
-      });
-      console.log("权限API检查结果:", hasWritePermission.value);
-
-    } catch (permissionError) {
-      console.warn("权限API调用失败，使用备用检查方式:", permissionError);
-
-      // 备用检查方式：使用协作者API
-      const fallbackResponse = await documentShareApi.getCollaborators(documentId);
-      console.log("备用API响应:", fallbackResponse);
-
-      // 详细的创建者检查，处理数据类型问题
-      const document = fallbackResponse.data.document;
-      const creator = document?.creator;
-
-      console.log("详细比较信息:", {
-        "creator.id": creator?.id,
-        "creator.id类型": typeof creator?.id,
-        "currentUserIdNumber": currentUserIdNumber,
-        "currentUserIdNumber类型": typeof currentUserIdNumber,
-        "creator.username": creator?.username,
-        "username": username,
-        "ID相等(===)": creator?.id === currentUserIdNumber,
-        "ID相等(==)": creator?.id == currentUserIdNumber,
-        "用户名相等": creator?.username === username
-      });
-
-      // 使用数字类型的用户ID进行比较
-      const isCreatorById = creator && (creator.id === currentUserIdNumber || creator.id == currentUserIdNumber);
-      const isCreatorByUsername = creator && creator.username === username;
-      const isCreator = isCreatorById && isCreatorByUsername;
-
-      const hasEditorRole = fallbackResponse.data.collaborators.some(
-        (collab) => (collab.user.id === currentUserIdNumber || collab.user.id == currentUserIdNumber) && collab.role === "EDITOR"
-      );
-
-      console.log("备用检查结果:", {
-        isCreatorById,
-        isCreatorByUsername,
-        isCreator,
-        hasEditorRole
-      });
-
-      hasWritePermission.value = isCreator || hasEditorRole;
-      console.log("备用检查最终结果:", hasWritePermission.value);
-    }
-
-    isLoading.value = false;
+    // 获取文档协作者列表
+    const response2 = await documentShareApi.getCollaborators(documentId);
+    // 判断当前用户是否为文档创建者或有读写权限
+    isLoading.value =false
+    const isCreator =
+      response2.data.document &&
+      response2.data.document.creator.username === username &&
+      response2.data.document.creator.id === currentUserId;
+    const hasEditorRole = response2.data.collaborators.some(
+      (collab) => collab.user.id === currentUserId && collab.role === "EDITOR"
+    );
+    console.log("当前用户是否为创建者:", isCreator);
+    console.log("当前用户是否在协作者列表:", hasEditorRole);
+    hasWritePermission.value = isCreator || hasEditorRole;
   } catch (error) {
     console.error("权限检查失败:", error);
-    console.error("错误详情:", error.response || error.message);
-
-    hasError.value = true;
-    errorMessage.value = error.response?.data?.message || error.message || '获取文档权限失败';
     hasWritePermission.value = false;
-    isLoading.value = false;
   }
 };
 </script>

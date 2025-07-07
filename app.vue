@@ -9,7 +9,6 @@
 <script setup>
 import { onMounted } from "vue";
 import { themeChange } from "theme-change";
-
 onMounted(() => {
   // 初始化主题切换
   themeChange(false);

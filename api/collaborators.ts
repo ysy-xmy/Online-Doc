@@ -18,7 +18,7 @@ export interface DocumentShareInvitation {
     username: string
     email: string
   }
-  inviteeEmail: string
+  inviteeUsername: string
   role: 'VIEWER' | 'COMMENTER' | 'EDITOR'
   invitationType: 'DOCUMENT' | 'WORKSPACE'
   status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'
@@ -104,21 +104,21 @@ export interface InvitationListResponse {
 
 // 请求参数接口
 export interface ShareDocumentRequest {
-  inviteeEmail: string
+  inviteeUsername: string
   role: 'VIEWER' | 'COMMENTER' | 'EDITOR'
   message?: string
   expirationDays?: number
 }
 
 export interface BatchShareDocumentRequest {
-  inviteeEmails: string[]
+  inviteeUsernames: string[]
   role: 'VIEWER' | 'COMMENTER' | 'EDITOR'
   message?: string
   expirationDays?: number
 }
 
 export interface AddCollaboratorRequest {
-  userEmail: string
+  username: string
   role: 'VIEWER' | 'COMMENTER' | 'EDITOR'
   message?: string
 }
@@ -128,11 +128,7 @@ export interface UpdateCollaboratorRequest {
   status?: 'ACTIVE' | 'INACTIVE'
 }
 
-export interface CreateShareLinkRequest {
-  permission: 'VIEW' | 'COMMENT' | 'EDIT'
-  expirationDays?: number
-  password?: string
-}
+
 
 export interface GetCollaboratorsParams {
   page?: number
@@ -290,26 +286,5 @@ export const documentShareApi = {
     return apiRequest(endpoint)
   },
 
-  /**
-   * 生成文档分享链接
-   * @param documentId 文档ID
-   * @param data 分享链接配置
-   */
-  async createShareLink(
-    documentId: number,
-    data: CreateShareLinkRequest
-  ): Promise<ApiResponse<any>> {
-    return apiRequest(`/documents/${documentId}/share-link`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  },
 
-  /**
-   * 获取文档分享设置
-   * @param documentId 文档ID
-   */
-  async getShareSettings(documentId: number): Promise<ApiResponse<any>> {
-    return apiRequest(`/documents/${documentId}/share-settings`)
-  },
 }

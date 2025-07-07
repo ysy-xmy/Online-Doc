@@ -597,7 +597,7 @@ const initCollaborativeEditor = async () => {
 
   provider = new websocketModule.value.WebsocketProvider(
     // "ws://8.134.200.53:1234",
-    "ws://8.134.200.53:8080",
+    "ws://8.134.200.53:1234",
     // "ws://localhost:1234",
     roomName,
     ydoc,

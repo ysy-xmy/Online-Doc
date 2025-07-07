@@ -78,7 +78,7 @@
                   🗂️ 知识库管理
                 </h3>
                 <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
-                  轻松创建、管理知识库，灵活设置权限，构建团队专属知识体系
+                  轻松创建、管理知识库，构建团队专属知识体系
                 </p>
               </div>
               <div class="flex-1 md:w-1/2">
@@ -164,7 +164,7 @@
               </h3>
               <p
                 class="text-sm lg:text-base text-gray-600 dark:text-gray-300 leading-relaxed">
-                打造个人知识体系，支持Markdown，让学习笔记更专业。
+                打造个人知识体系，让学习笔记更专业。
               </p>
             </div>
           </div>

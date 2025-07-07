@@ -49,7 +49,7 @@
         class="document-header bg-base-100 border-b border-base-content/10 px-4 py-2 flex justify-between items-center"
       >
         <div class="flex items-center gap-4">
-          <button class="btn btn-ghost btn-circle" @click="goBack">
+          <button class="btn btn-ghost btn-circle" @click="saveAndGoBack">
             <img
               src="https://img.icons8.com/?size=100&id=19175&format=png&color=000000"
               class="h-6 w-6"
@@ -59,7 +59,7 @@
         </div>
         <div class="header-actions flex items-center gap-4">
           <ThemeChange />
-          <button class="btn btn-primary btn-sm">保存</button>
+          <button class="btn btn-primary btn-sm" @click="saveVersion">保存</button>
           <!-- <button class="btn btn-secondary btn-sm">分享</button> -->
           <label for="share-modal" class="btn btn-secondary btn-sm">分享</label>
           <div class="text-base-content text-xl mx-2 text-bold">
@@ -67,20 +67,9 @@
           </div>
           <div class="flex-none">
             <div class="dropdown dropdown-end">
-              <div
-                tabindex="0"
-                role="button"
-                class="btn btn-ghost btn-circle avatar"
-              >
-                <div
-                  class="w-10 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2"
-                >
-                  <img
-                    alt="用户头像"
-                    :src="userInfo.avatar || '/avatar_1.webp'"
-                    class="object-cover"
-                    @error="handleAvatarError"
-                  />
+               <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+                <div class="w-10 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
+                  <img alt="用户头像" :src="userInfo.avatar" class="object-cover" />
                 </div>
               </div>
               <ul
@@ -121,17 +110,22 @@
 </template>
 
 <script setup>
-import { useCookie } from "#app";
+// import { useCookie } from "#app";
 import { ref, onMounted } from "vue";
 import ThemeChange from "~/components/layouts/ThemeChange.vue";
 import UserInfo from "~/components/common/userInfo.vue";
 import { useUserStore } from "~/stores/user";
 import { useWorkspaceStore } from "~/stores/workspace";
 import ShareModal from "~/components/layouts/ShareModal.vue";
+import { useRouter, useRoute } from "vue-router";
+import { useFetch, useCookie } from "nuxt/app";
+import { useEditorStore } from "~/stores/editorStore";
+
 // 动态导入组件（避免服务端加载）
 const Editor = defineAsyncComponent(() => import("./editor.vue"));
 const router = useRouter();
 const userStore = useUserStore();
+const editorStore = useEditorStore();
 const userInfo = computed(() => userStore.userInfo);
 const workspaceStore = useWorkspaceStore();
 const documents = ref([]);
@@ -183,8 +177,59 @@ const getStatusBadgeClass = (status) => {
   return classMap[status] || "badge-neutral";
 };
 
-const goBack = () => {
-  router.push("/"); // 返回到首页（默认布局）
+// 获取文档ID
+const documentId = route.params.id || 'default-docId';
+
+// 返回首页并保存版本
+const saveAndGoBack = async () => {
+  await saveVersion();
+  router.push("/");
+};
+// 保存版本
+const saveVersion = async () => {
+  try {
+    const title = editorStore.documentTitle;
+    const content = editorStore.editorContent;
+    const description = editorStore.versionDescription;
+    console.log("editorStore::", editorStore.documentTitle);
+    // 构造请求数据
+    const versionData = {
+      description,
+      title,
+      content,
+      isMajor: true,
+      creator: {
+        id: userInfo.id,
+        username: userInfo.username
+      }
+    };
+    console.log("发送的title", title);
+    const apiUrl = `http://8.134.200.53:8080/api/documents/${documentId}/versions`;
+    // 从cookie中获取token
+    const tokenCookie = useCookie('token');
+    const token = tokenCookie.value;
+
+    const headers = {
+      ...(token ? {Authorization: `Bearer ${token}`} : {}),
+      'Content-Type': 'application/json'
+    };
+
+    // 发送POST请求
+    const {data, error} = await useFetch(apiUrl, {
+      headers,
+      method: 'POST',
+      body: versionData
+    });
+
+    // 处理响应（按接口规范校验success状态）
+    if (error.value || (!data.value || !data.value.success)) {
+      throw new Error(data.value?.message || error.value?.message || '保存版本失败');
+    }
+    // 处理成功响应
+    console.log('版本保存成功:', data.value);
+  } catch (error) {
+    console.error('保存版本失败:', error);
+  }
 };
 
 const logout = () => {
@@ -208,6 +253,7 @@ const handleAvatarError = (event) => {
   console.log('当前头像URL:', userInfo.avatar);
   event.target.src = '/avatar_1.webp';
 };
+
 
 const { $axios } = useNuxtApp();
 onMounted(async () => {

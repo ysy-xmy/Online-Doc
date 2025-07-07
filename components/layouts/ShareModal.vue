@@ -54,7 +54,7 @@
             @click="inviteUser"
             :disabled="!canInvite"
           >
-            发送邀请
+            添加协作者
           </button>
         </div>
 
@@ -154,7 +154,7 @@ const validateAndCheckUser = debounce(async () => {
   }
 }, 500);
 
-// 邀请他人方法
+// 直接添加协作者方法（无需邀请确认）
 const inviteUser = async () => {
   if (!canInvite.value) {
     alert("请输入有效的用户名");
@@ -162,20 +162,20 @@ const inviteUser = async () => {
   }
 
   try {
-    console.log("发送邀请: 文档ID=", documentId, "用户名=", inviteeUsername.value);
+    console.log("添加协作者: 文档ID=", documentId, "用户名=", inviteeUsername.value);
 
-    const response = await documentShareApi.shareDocument(
+    // 使用直接添加协作者API，而不是邀请API
+    const response = await documentShareApi.addCollaborator(
       Number(documentId),
       {
-        inviteeUsername: inviteeUsername.value,
+        username: inviteeUsername.value,
         role: invitationRole.value,
-        message: "", // 可选消息
-        expirationDays: 7 // 默认7天过期
+        message: "" // 可选消息
       }
     );
 
-    console.log("邀请发送成功:", response);
-    alert("邀请发送成功！");
+    console.log("协作者添加成功:", response);
+    alert("协作者添加成功！用户现在可以直接访问文档。");
 
     // 清空表单
     inviteeUsername.value = "";

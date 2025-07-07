@@ -39,9 +39,10 @@ export default defineNuxtConfig({
     },
     runtimeConfig: {
         public: {
+            //8.134.200.53
             // API 基地址
             apiBase: process.env.API_BASE_URL || 'http://8.134.200.53:8080/api',
-            
+
             // WebSocket 服务器地址
             websocketUrl: process.env.WEBSOCKET_URL || 'ws://8.134.200.53:1838'
         }
@@ -53,11 +54,11 @@ export default defineNuxtConfig({
                 proxy: process.env.API_BASE_URL || 'http://8.134.200.53:8080'
             },
             // 移除具体的文档代理，改用通用处理
-            '/document/**': { 
+            '/document/**': {
                 ssr: true,
                 static: true
             },
-            '/knowledgeBase/**': { 
+            '/knowledgeBase/**': {
                 ssr: true,
                 static: true
             },

@@ -227,14 +227,33 @@
           </div>
       </div>
 
-      <!-- 最近文档 -->
+      <!-- 文档区域 -->
       <div class="mb-8">
           <div class="flex items-center justify-between mb-4">
-              <h2 class="text-xl font-bold text-base-content">最近文档</h2>
+              <div class="flex items-center space-x-4">
+                  <h2 class="text-xl font-bold text-base-content">文档</h2>
+                  <!-- 标签页切换 -->
+                  <div class="tabs tabs-boxed tabs-sm">
+                      <a
+                          class="tab"
+                          :class="{ 'tab-active': activeDocumentTab === 'recent' }"
+                          @click="activeDocumentTab = 'recent'"
+                      >
+                          最近文档
+                      </a>
+                      <a
+                          class="tab"
+                          :class="{ 'tab-active': activeDocumentTab === 'collaboration' }"
+                          @click="switchToCollaborationTab"
+                      >
+                          协作文档
+                      </a>
+                  </div>
+              </div>
               <button
                   class="btn btn-ghost btn-sm"
-                  @click="refreshDashboard"
-                  :disabled="dashboardStore.loading"
+                  @click="refreshCurrentTab"
+                  :disabled="dashboardStore.loading || collaborationLoading"
               >
                   <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -242,7 +261,7 @@
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
-                      :class="{ 'animate-spin': dashboardStore.loading }"
+                      :class="{ 'animate-spin': dashboardStore.loading || collaborationLoading }"
                   >
                       <path
                           stroke-linecap="round"
@@ -255,16 +274,15 @@
           </div>
 
           <!-- 加载状态 -->
-          <div v-if="dashboardStore.loading" class="flex justify-center py-8">
+          <div v-if="dashboardStore.loading || collaborationLoading" class="flex justify-center py-8">
               <span class="loading loading-spinner loading-lg"></span>
           </div>
 
-          <!-- 文档列表 -->
+          <!-- 最近文档标签页 -->
           <div
-              v-else-if="
+              v-else-if="activeDocumentTab === 'recent' &&
                   dashboardStore.recentDocuments &&
-                  dashboardStore.recentDocuments.length > 0
-              "
+                  dashboardStore.recentDocuments.length > 0"
               class="overflow-x-auto h-48"
           >
               <table class="table table-zebra table-xs table-pin-rows">
@@ -397,6 +415,128 @@
               </table>
           </div>
 
+          <!-- 协作文档标签页 -->
+          <div
+              v-else-if="activeDocumentTab === 'collaboration' &&
+                  collaborationDocuments &&
+                  collaborationDocuments.length > 0"
+              class="overflow-x-auto h-48"
+          >
+              <table class="table table-zebra table-xs table-pin-rows">
+                  <thead>
+                      <tr class="sticky top-0 z-10">
+                          <th class="min-w-44">文档名称</th>
+                          <th class="min-w-28">类型</th>
+                          <th class="min-w-20">状态</th>
+                          <th class="min-w-28">创建人</th>
+                          <th class="min-w-44">最后修改</th>
+                          <th class="min-w-36">更新时间</th>
+                          <th class="min-w-20">操作</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <tr
+                          v-for="collab in collaborationDocuments"
+                          :key="collab.id"
+                          class="cursor-pointer hover:bg-base-200 transition-all duration-200 group"
+                          @click="openDocument(collab.document.id)"
+                      >
+                          <td>
+                              <div class="flex items-center space-x-2">
+                                  <span class="text-base-content/70 mr-2">{{
+                                      getDocumentIcon(collab.document.type)
+                                  }}</span>
+                                  <div>
+                                      <div class="font-bold">
+                                          {{ collab.document.title || "未命名文档" }}
+                                      </div>
+                                      <div class="text-xs text-base-content/60">
+                                          协作权限: {{ getPermissionText(collab.permission) }}
+                                      </div>
+                                  </div>
+                              </div>
+                          </td>
+                          <td>
+                              <span class="badge badge-outline badge-sm">{{
+                                  getDocumentTypeText(collab.document.type)
+                              }}</span>
+                          </td>
+                          <td>
+                              <span
+                                  class="badge badge-sm"
+                                  :class="getStatusBadgeClass(collab.document.status)"
+                              >
+                                  {{ getStatusText(collab.document.status) }}
+                              </span>
+                          </td>
+                          <td>
+                              <div class="flex items-center gap-3">
+                                  <div class="avatar">
+                                      <div class="w-8 h-8 rounded-full overflow-hidden">
+                                          <img
+                                              :src="collab.document.creator?.avatar || '/avatar_1.webp'"
+                                              :alt="collab.document.creator?.nickname || collab.document.creator?.username || '未知'"
+                                              class="w-full h-full object-cover"
+                                              @error="(e) => handleAvatarError(e, collab.document.creator?.nickname || collab.document.creator?.username || '未知')"
+                                          />
+                                      </div>
+                                  </div>
+                                  <div>
+                                      <div class="font-bold text-sm">
+                                          {{
+                                              collab.document.creator?.nickname ||
+                                              collab.document.creator?.username ||
+                                              "未知"
+                                          }}
+                                      </div>
+                                  </div>
+                              </div>
+                          </td>
+                          <td>
+                              <div
+                                  v-if="collab.document.lastModifier"
+                                  class="flex items-center gap-3"
+                              >
+                                  <div class="avatar">
+                                      <div class="w-8 h-8 rounded-full overflow-hidden">
+                                          <img
+                                              :src="collab.document.lastModifier.avatar || '/avatar_1.webp'"
+                                              :alt="collab.document.lastModifier.nickname || collab.document.lastModifier.username || '未知'"
+                                              class="w-full h-full object-cover"
+                                              @error="(e) => handleAvatarError(e, collab.document.lastModifier.nickname || collab.document.lastModifier.username || '未知')"
+                                          />
+                                      </div>
+                                  </div>
+                                  <div>
+                                      <div class="font-bold text-sm">
+                                          {{
+                                              collab.document.lastModifier.nickname ||
+                                              collab.document.lastModifier.username ||
+                                              "未知"
+                                          }}
+                                      </div>
+                                  </div>
+                              </div>
+                              <span v-else class="text-base-content/50">-</span>
+                          </td>
+                          <td>
+                              <div class="text-sm">
+                                  {{ formatDate(collab.document.updatedAt) }}
+                              </div>
+                          </td>
+                          <td>
+                              <button
+                                  class="btn btn-ghost btn-xs"
+                                  @click.stop="openDocument(collab.document.id)"
+                              >
+                                  查看
+                              </button>
+                          </td>
+                      </tr>
+                  </tbody>
+              </table>
+          </div>
+
           <!-- 空状态 -->
           <div v-else class="text-center py-12 text-base-content/60">
               <svg
@@ -413,8 +553,12 @@
                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
               </svg>
-              <p class="text-lg mb-2">暂无最近文档</p>
-              <p class="text-sm">开始创建您的第一个文档吧</p>
+              <p class="text-lg mb-2">
+                  {{ activeDocumentTab === 'recent' ? '暂无最近文档' : '暂无协作文档' }}
+              </p>
+              <p class="text-sm">
+                  {{ activeDocumentTab === 'recent' ? '开始创建您的第一个文档吧' : '您还没有参与任何文档协作' }}
+              </p>
           </div>
       </div>
   </div>
@@ -552,6 +696,11 @@ const showSearchModal = ref(false);
 const searchResults = ref(null);
 const searchLoading = ref(false);
 
+// 文档标签页相关
+const activeDocumentTab = ref('recent');
+const collaborationDocuments = ref([]);
+const collaborationLoading = ref(false);
+
 // Toast 提示函数
 const showToast = (message, type = 'info') => {
     // 创建 toast 元素
@@ -652,6 +801,62 @@ const refreshDashboard = async () => {
       // 可以添加错误提示
       dashboardStore.setError("无法加载仪表板数据");
   }
+};
+
+// 切换到协作文档标签页
+const switchToCollaborationTab = async () => {
+    activeDocumentTab.value = 'collaboration';
+    await fetchCollaborationDocuments();
+};
+
+// 获取协作文档列表
+const fetchCollaborationDocuments = async () => {
+    try {
+        collaborationLoading.value = true;
+        console.log('开始获取协作文档列表...');
+
+        const { documentShareApi } = await import('~/api/collaborators');
+        const response = await documentShareApi.getMyCollaborationDocuments();
+
+        console.log('协作文档API响应:', response);
+
+        if (response.code === 'SUCCESS' && response.data) {
+            collaborationDocuments.value = response.data.collaborators || [];
+            console.log('协作文档列表:', collaborationDocuments.value);
+        } else {
+            console.warn('获取协作文档失败:', response.message);
+            collaborationDocuments.value = [];
+        }
+    } catch (error) {
+        console.error('获取协作文档失败:', error);
+        collaborationDocuments.value = [];
+        showToast('获取协作文档失败', 'error');
+    } finally {
+        collaborationLoading.value = false;
+    }
+};
+
+// 刷新当前标签页
+const refreshCurrentTab = async () => {
+    if (activeDocumentTab.value === 'recent') {
+        await refreshDashboard();
+    } else {
+        await fetchCollaborationDocuments();
+    }
+};
+
+// 获取权限文本
+const getPermissionText = (permission) => {
+    switch (permission) {
+        case 'READ':
+            return '只读';
+        case 'WRITE':
+            return '编辑';
+        case 'ADMIN':
+            return '管理';
+        default:
+            return '未知';
+    }
 };
 
 // 搜索处理

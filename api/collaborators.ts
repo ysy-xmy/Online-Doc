@@ -286,5 +286,24 @@ export const documentShareApi = {
     return apiRequest(endpoint)
   },
 
+  /**
+   * 获取当前用户协作的文档列表
+   * @param params 分页参数
+   */
+  async getMyCollaborationDocuments(
+    params?: GetCollaboratorsParams
+  ): Promise<ApiResponse<CollaboratorListResponse>> {
+    const searchParams = new URLSearchParams()
+    if (params?.page !== undefined) searchParams.set('page', params.page.toString())
+    if (params?.size !== undefined) searchParams.set('size', params.size.toString())
+
+    const queryString = searchParams.toString()
+    const endpoint = queryString
+      ? `/documents/my-collaborations?${queryString}`
+      : `/documents/my-collaborations`
+
+    return apiRequest(endpoint)
+  },
+
 
 }

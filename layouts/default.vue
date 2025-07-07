@@ -157,7 +157,9 @@
 
                 <!-- 主题切换开关 -->
                 <ThemeChange />
-
+                <div class="text-base-content text-xl mx-2 text-bold">
+                {{ userInfo.username }}
+          </div>
               <div class="flex-none">
 
                   <div class="dropdown dropdown-end">

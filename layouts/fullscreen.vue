@@ -132,7 +132,7 @@ import ShareModal from "~/components/layouts/ShareModal.vue";
 const Editor = defineAsyncComponent(() => import("./editor.vue"));
 const router = useRouter();
 const userStore = useUserStore();
-const userInfo = userStore.userInfo;
+const userInfo = computed(() => userStore.userInfo);
 const workspaceStore = useWorkspaceStore();
 const documents = ref([]);
 

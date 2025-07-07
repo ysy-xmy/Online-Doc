@@ -139,7 +139,9 @@ const username = ref("");
 const password = ref("");
 const confirmPassword = ref("");
 const selectedAvatar = ref(1); // 默认选择第一个头像
-const selectedAvatarUrl = ref("/avatar_1.webp"); // 默认选择第一个
+const selectedAvatarUrl = ref(
+    "https://obscloud.ulearning.cn/resources/web/17514210197846819.jpeg"
+); // 默认选择第一个
 const showSuccessAlert = ref(false); // 控制成功提示框显示
 
 // 头像列表
@@ -156,14 +158,14 @@ const avatars = ref([
 
 // 头像URL列表
 const urlList = ref([
-    "/avatar_1.webp",
-    "/avatar_2.webp",
-    "/avatar_3.webp",
-    "/avatar_4.webp",
-    "/avatar_5.webp",
-    "/avatar_6.webp",
-    "/avatar_7.webp",
-    "/avatar_8.webp",
+    "https://obscloud.ulearning.cn/resources/web/17514210197846819.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197888014.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197868973.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197805397.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197835722.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197797516.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197818342.jpeg",
+    "https://obscloud.ulearning.cn/resources/web/17514210197782512.jpeg",
 ]);
 
 // 选择头像函数(按ID选中URL)

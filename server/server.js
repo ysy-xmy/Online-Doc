@@ -139,7 +139,7 @@ wss.on('connection', (ws, req) => {
       const roomClientsSet = roomClients.get(roomName)
       if (roomClientsSet) {
         roomClientsSet.forEach((client) => {
-          if (client !== ws && client.readyState === WebSocket.OPEN) {
+          if (client !== ws && client.readyState === 1) {  // 1 对应 WebSocket.OPEN
             client.send(message)  // 转发原始消息  
           }
         })
@@ -155,7 +155,7 @@ wss.on('connection', (ws, req) => {
       // 广播房间状态给同一房间的所有客户端
       if (roomClientsSet) {
         roomClientsSet.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
+          if (client.readyState === 1) {  // 1 对应 WebSocket.OPEN
             client.send(statusMessage)
           }
         })
@@ -215,7 +215,7 @@ server.on('request', (req, res) => {
 })
 
 // 服务器配置
-const PORT = 1234  // 服务器监听端口
+const PORT = 1235  // 服务器监听端口
 
 // 启动服务器
 server.listen(PORT, () => {

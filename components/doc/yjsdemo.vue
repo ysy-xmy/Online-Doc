@@ -515,6 +515,32 @@ const initCollaborativeEditor = async () => {
     },
     readOnly: props.isReadOnly,
     placeholder: placeholderText,
+     // 支持的格式
+    formats: [
+      "header",
+      "font",
+      "size",
+      "bold",
+      "italic",
+      "underline",
+      "strike",
+      "color",
+      "background",
+      "script",
+      "blockquote",
+      "code-block",
+      "list",
+      "bullet",
+      "indent",
+      "link",
+      "image",
+      "video",
+      "align",
+      "direction",
+      "clean",
+      "comment-format",
+    ],
+
   });
 
   // 点击事件处理

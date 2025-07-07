@@ -53,6 +53,10 @@ export default defineNuxtConfig({
             '/api/**': {
                 proxy: process.env.API_BASE_URL || 'http://8.134.200.53:8080'
             },
+            '/**': { 
+                ssr: true,
+                static: true
+            },
             // 移除具体的文档代理，改用通用处理
             '/document/**': {
                 ssr: true,
@@ -74,5 +78,6 @@ export default defineNuxtConfig({
         prerender: {
             ignore: ["**"]
         }
-    }
+    },
+    ssr: true, // 确保 SSR 模式启用
 })

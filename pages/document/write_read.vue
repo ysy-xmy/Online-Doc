@@ -42,6 +42,7 @@ import { useDocumentStore } from "@/stores/document";
 import { useDocumentStore as useDocumentStoreAPI } from "@/stores/documentStore";
 import FloatingButton from "@/components/AI/FloatingButton.vue";
 import SummaryModal from "@/components/AI/SummaryModal.vue";
+import {documentApi} from "@/api/document.js";
 
 const isAISummaryVisible = ref(false);
 const startSummary = () => {
@@ -54,6 +55,7 @@ const handleClosePanel = () => {
 const documentStore = useDocumentStore();
 const documentStoreAPI = useDocumentStoreAPI();
 const documentInfo = documentStore.documentInfo;
+const editorStore = useEditorStore();
 
 // 使用 definePageMeta 指定全局布局
 definePageMeta({
@@ -61,6 +63,7 @@ definePageMeta({
 });
 
 import { ref, provide } from "vue";
+import {useEditorStore} from "~/stores/editorStore.js";
 
 const route = useRoute();
 const documentId = route.params.id;
@@ -154,10 +157,17 @@ onMounted(() => {
 });
 
 // 保存文档的方法
-const saveDocument = (name) => {
+const saveDocument = async(name) => {
   documentInfo.value = name;
+  editorStore.setDocumentTitle(name);//新添加，更新文档标题的存储
   // 在实际应用中，这里应该调用后端保存接口
+  const response = await documentApi.update(Number(documentId), { 
+  title: name, 
+  content: documentContent.value, 
+}); 
+console.log("保存文档响应:", response);
   console.log("保存文档:", name, documentContent.value);
+console.log("editorStore:", editorStore.documentTitle);
 
   // 更新保存状态
   if (menuRef.value) {

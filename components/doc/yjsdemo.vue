@@ -8,6 +8,8 @@ import "highlight.js/styles/atom-one-dark.min.css";
 import hljs from "highlight.js/lib/common";
 import { useUserStore } from "@/stores/user";
 import { useDocumentStore as useDocStore } from "@/stores/document";
+import { useEditorStore } from '../../stores/editorStore.js';
+
 const userStore = useUserStore();
 const userInfo = computed(() => userStore.userInfo);
 const route = useRoute();
@@ -46,6 +48,9 @@ const roomInfo = ref({
   hasDocument: false,
 });
 
+// 新添加变量，用于记录开始计时的时间
+let startTime = null;
+
 // 添加 userSelectionRange 变量
 let userSelectionRange = null;
 let quill = null;
@@ -59,6 +64,17 @@ const documentStore = useDocStore();
 const documentInfo = useDocStore().documentInfo;
 const usersInfo = useDocStore().usersInfo;
 const emits = defineEmits(["openCommentPanel"]);
+
+//新添加
+const editorStore = useEditorStore();
+//新添加：定义获取编辑器内容的函数
+const getEditorContent = () => {
+  if (quill) {
+    return quill.root.innerHTML;
+  }
+  return null;
+};
+
 // 异步加载依赖
 const loadDependencies = async () => {
   if (!isClient) return;
@@ -101,6 +117,62 @@ const autoSave = () => {
   documentInfo.isSaving = true;
   documentInfo.saveStatus = "保存中";
   debouncedRestoreSaveStatus();
+};
+
+// 新添加：定时器相关变量
+const autoSaveTimer = ref(null); // 定时器引用
+const lastSaveTime = ref(0); // 上次保存的时间
+const autoSaveInterval = 30000; // 自动保存间隔（30秒）
+// 新添加：保存历史版本
+const saveHistoricalVersion = async () => {
+  try {
+    const documentId = route.params.id;
+    const content = getEditorContent(); // 获取编辑器内容
+    const contentJson = JSON.stringify(quill.getContents()); // 获取编辑器内容的 JSON 格式
+    // 打印原始数据
+    console.log('获取的数据:', {
+      documentId,
+      content,
+      contentJson
+    });
+    // 构建请求体
+    //const requestBody = JSON.stringify({ content, contentJson });
+    const requestBody = JSON.stringify({
+      content,
+      contentJson,
+      "triggerType": "AUTO_SAVE", // 触发类型
+      "clientId": "web-123456" // 客户端 ID
+    });
+    console.log('实际发送的请求体:', requestBody);
+    // 构造API URL
+    const apiUrl = `http://8.134.200.53:8080/api/documents/${documentId}/versions/auto-save`;
+    // 从cookie中获取token
+    const tokenCookie = useCookie('token');
+    const token = tokenCookie.value;
+    const headers = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'Content-Type': 'application/json'
+    };
+    console.log("headers:", headers);
+    const { data, error } = await useFetch(apiUrl, {
+      headers,
+      method: 'POST',
+      body: requestBody
+    });
+    if (error.value) {
+      throw new Error(error.value.message || '自动保存版本失败');
+    }
+    if (!data.value || !data.value.success) {
+      throw new Error('接口返回数据格式不正确');
+    }
+    console.log('自动保存版本成功:', data.value);
+    // 保存成功后更新上次保存时间
+    lastSaveTime.value = Date.now();
+    return data.value;
+  } catch (error) {
+    console.error('自动保存版本失败:', error);
+    throw error;
+  }
 };
 
 // 渲染远程光标的函数
@@ -516,6 +588,98 @@ const initCollaborativeEditor = async () => {
     readOnly: props.isReadOnly,
     placeholder: placeholderText,
   });
+// 新添加 加载 store 中的内容到编辑器
+  if (editorStore.editorContent) {
+    quill.root.innerHTML = editorStore.editorContent;
+    console.log('已从 store 加载内容到编辑器');
+  }
+  // 新添加文本变化事件监听器
+  quill.on('text-change', () => {
+    const content = getEditorContent();
+    editorStore.setEditorContent(content);
+    console.log('当前编辑内容:', content);
+    console.log('当前存储内容:', editorStore.editorContent);
+
+    // 记录文本变化时的时间
+    const currentTime = Date.now();
+    if (lastSaveTime.value === 0) {
+      lastSaveTime.value = currentTime;
+    }
+
+    // 判断是否满足“半分钟”的条件（从上次保存开始计算）
+    const timeInterval = (currentTime - lastSaveTime.value) / 1000;
+    if (timeInterval >= 30) {
+      saveHistoricalVersion();
+      lastSaveTime.value = currentTime;
+    }
+  });
+
+  // 组件挂载时启动定时器
+  onMounted(async () => {
+    if (!isClient) return;
+
+    // 先加载依赖
+    await loadDependencies();
+
+    // 初始化编辑器
+    await initCollaborativeEditor();
+
+    // 启动自动保存定时器
+    startAutoSaveTimer();
+  });
+
+  // 启动自动保存定时器
+  const startAutoSaveTimer = () => {
+    // 清除已有的定时器
+    if (autoSaveTimer.value) {
+      clearInterval(autoSaveTimer.value);
+    }
+
+    // 设置新的定时器，每隔30秒检查一次
+    autoSaveTimer.value = setInterval(() => {
+      const currentTime = Date.now();
+      const timeInterval = (currentTime - lastSaveTime.value) / 1000;
+
+      if (timeInterval >= 30) {
+        saveHistoricalVersion();
+        lastSaveTime.value = currentTime;
+      }
+    }, autoSaveInterval);
+  };
+
+// 组件卸载时清理定时器
+  onUnmounted(() => {
+    // 清理滚动监听器
+    document.querySelector(".ql-editor")?.removeEventListener("scroll", handleEditorScroll);
+
+    // 移除键盘事件监听器
+    if (quill && quill.root) {
+      quill.root.removeEventListener("keydown", handleKeyboardEvent);
+    }
+
+    // 移除窗口大小变化监听器
+    window.removeEventListener("resize", debouncedWindowResizeCursors);
+
+    // 清空用户信息
+    documentStore.$patch({
+      usersInfo: {
+        name: "",
+        color: "",
+        timestamp: 0,
+        clientID: "",
+      },
+      allUsersList: [],
+    });
+
+    // 清理自动保存定时器
+    if (autoSaveTimer.value) {
+      clearInterval(autoSaveTimer.value);
+      autoSaveTimer.value = null;
+    }
+
+    provider?.disconnect();
+    ydoc?.destroy();
+  });
 
   // 点击事件处理
   quill.root.addEventListener("click", (event) => {
@@ -597,6 +761,7 @@ const initCollaborativeEditor = async () => {
 
   provider = new websocketModule.value.WebsocketProvider(
     // "ws://8.134.200.53:1234",
+    // "ws://8.134.200.53:8080",
     "ws://8.134.200.53:1234",
     // "ws://localhost:1234",
     roomName,

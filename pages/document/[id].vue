@@ -1,6 +1,6 @@
 <template>
   <div
-    class="h-full w-full flex flex-col overflow-y-auto dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-52"
+    class="h-full w-full flex flex-col overflow-y-auto dark:bg-gray-900 text-gray-900 dark:text-gray-100 pl-52"
   >
     <!-- 加载状态 -->
     <div v-if="isLoading" class="flex items-center justify-center h-64">
@@ -20,10 +20,11 @@
 
     <!-- 正常内容 -->
     <div v-else>
-      <WriteRead v-if="hasWritePermission" />
+      <WriteRead v-if="hasWritePermission" @changeRevision="changeRevision" />
       <ReadOnlyViewer v-else />
     </div>
   </div>
+  <RevisionInfo :revisions="documentRevisions" @apply="apply" @cancel="cancel"/>
 </template>
 
 <script setup>
@@ -32,6 +33,7 @@ import { useRoute } from "vue-router";
 import { useUserStore } from "@/stores/user";
 import { documentShareApi } from "~/api/collaborators";
 import WriteRead from "./write_read.vue";
+import RevisionInfo from "./revisionInfo.vue"
 import ReadOnlyViewer from "./ReadOnlyViewer.vue";
 
 // 路由和状态管理
@@ -39,6 +41,23 @@ const route = useRoute();
 const userStore = useUserStore();
 const documentId = route.params.id;
 const hasWritePermission = ref(false);
+const documentRevisions =ref()
+const writereadRef = ref(null)
+// 模拟在线用户数据（后面连接）
+const onlineUsers = ref([
+  {
+    id: 1,
+    name: "用户A",
+    color: "#007bff",
+    isLocal: true,
+  },
+  {
+    id: 2,
+    name: "用户B",
+    color: "#28a745",
+    isLocal: false,
+  },
+]);
 const username = userStore.getUserInfo().username;
 const currentUserId = userStore.getUserInfo().id;
 
@@ -51,6 +70,19 @@ const hasError = ref(false);
 const errorMessage = ref('');
 
 
+const changeRevision =(list)=>{
+  documentRevisions.value = list
+}
+const apply=(revisionData)=>{
+  if(writereadRef){
+    writereadRef.value.apply(revisionData)
+  }
+}
+const cancel=(revisionData)=>{
+  if(writereadRef){
+    writereadRef.value.cancel(revisionData)
+  }
+}
 // 使用 definePageMeta 指定全局布局
 definePageMeta({
   layout: "fullscreen",

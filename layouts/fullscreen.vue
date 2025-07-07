@@ -118,7 +118,10 @@
 <script setup>
 import { useCookie } from "#app";
 import { ref, onMounted } from "vue";
+import { useCookie } from "#app";
+import { ref, onMounted } from "vue";
 import ThemeChange from "~/components/layouts/ThemeChange.vue";
+import UserInfo from "~/components/common/userInfo.vue";
 import UserInfo from "~/components/common/userInfo.vue";
 import { useUserStore } from "~/stores/user";
 import { useWorkspaceStore } from "~/stores/workspace";
@@ -337,11 +340,11 @@ onMounted(async () => {
 
 <style scoped>
 .document-layout {
-  height: 100vh;
-  width: 100vw;
+    height: 100vh;
+    width: 100vw;
 }
 
 .document-content {
-  max-width: 100%;
+    max-width: 100%;
 }
 </style>

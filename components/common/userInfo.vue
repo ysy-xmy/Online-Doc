@@ -62,20 +62,6 @@
 
             <!-- 用户信息表单 -->
             <form @submit.prevent="saveUserInfo" class="space-y-4">
-                <!-- 用户名 -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text text-base-content">用户名</span>
-                    </label>
-                    <input
-                        v-model="formData.username"
-                        type="text"
-                        class="input input-bordered bg-base-200 text-base-content"
-                        :disabled="true"
-                        placeholder="用户名不可修改"
-                    />
-                </div>
-
                 <!-- 昵称 -->
                 <div class="form-control">
                     <label class="label">
@@ -86,6 +72,7 @@
                         type="text"
                         class="input input-bordered bg-base-200 text-base-content"
                         placeholder="请输入昵称"
+                        style="margin-top: 5px"
                     />
                 </div>
 
@@ -104,6 +91,7 @@
                         type="email"
                         class="input input-bordered bg-base-200 text-base-content"
                         placeholder="请输入邮箱（可选）"
+                        style="margin-top: 5px"
                     />
                 </div>
 
@@ -187,12 +175,13 @@ const emit = defineEmits(["close"]);
 const isLoading = ref(false);
 const showAvatarUpload = ref(false);
 const selectedAvatar = ref(1);
+const avatar = ref(userStore.avatar);
 
 // 表单数据
 const formData = reactive({
-    username: "",
-    nickname: "",
-    email: "",
+    nickname: JSON.parse(localStorage.getItem("userInfo"))?.nickname,
+    email: JSON.parse(localStorage.getItem("userInfo"))?.email,
+    avatarIndex: 1,
 });
 
 // 初始化表单数据
@@ -202,14 +191,10 @@ const initFormData = () => {
     formData.email = userStore.email.value || "";
 };
 
-// 重置表单
-const resetForm = () => {
-    initFormData();
-};
-
 // 选择头像
 const selectAvatar = (index) => {
     selectedAvatar.value = index;
+    formData.avatarIndex = index;
 };
 
 // 打开头像选择
@@ -250,14 +235,18 @@ const confirmAvatarChange = async () => {
 
 // 保存用户信息
 const saveUserInfo = async () => {
-    try {
-        isLoading.value = true;
+    const data = {
+        nickname: formData.nickname,
+        email: formData.email,
+        // avatarId: "",  头像不支持修改
+    };
 
-        // 发送更新请求
-        await $axios.put("/api/auth/profile", {
-            nickname: formData.nickname,
-            email: formData.email,
-        });
+    try {
+        $axios("api/auth/me", {
+            method: "PUT",
+            body: JSON.stringify(data),
+        }).then((res) => {
+            console.log("res", res);
 
         // 更新store
         userStore.updateUserInfo({
@@ -268,10 +257,7 @@ const saveUserInfo = async () => {
         // 显示成功提示
         alert("保存成功！");
     } catch (error) {
-        console.error("保存用户信息失败:", error);
-        alert("保存失败，请重试");
-    } finally {
-        isLoading.value = false;
+        console.error("接口错误:", error);
     }
 };
 

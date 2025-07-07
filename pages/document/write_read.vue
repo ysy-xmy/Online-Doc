@@ -5,6 +5,7 @@
       :documentId="documentId"
       :onlineUsers="onlineUsers"
       @save="saveDocument"
+      @toggleRevisionMode="handleRevisionModeToggle"
       ref="menuRef" />
 
     <!-- 文档编辑器 -->
@@ -12,6 +13,7 @@
       ref="yjsdemoRef"
       :isReadOnly="false"
       @openCommentPanel="openSidebar"
+      @updateRevision="handleRevisionUpdate"
     />
 
     <!-- 文档侧边栏 -->
@@ -42,6 +44,7 @@ import { useDocumentStore } from "@/stores/document";
 import { useDocumentStore as useDocumentStoreAPI } from "@/stores/documentStore";
 import FloatingButton from "@/components/AI/FloatingButton.vue";
 import SummaryModal from "@/components/AI/SummaryModal.vue";
+import { useDocumentStore as useDocumentStoreAPI } from "@/stores/documentStore";
 
 const isAISummaryVisible = ref(false);
 const startSummary = () => {
@@ -50,7 +53,9 @@ const startSummary = () => {
 const handleClosePanel = () => {
   isAISummaryVisible.value = false;
 };
-
+const updateRevision = ()=>{
+  
+}
 const documentStore = useDocumentStore();
 const documentStoreAPI = useDocumentStoreAPI();
 const documentInfo = documentStore.documentInfo;
@@ -76,6 +81,9 @@ const documentName = ref("未命名文档");
 const showSidebar = ref(false);
 const menuRef = ref(null);
 const yjsdemoRef = ref(null);
+const emits = defineEmits(['changeRevision'])
+// 添加修订模式状态
+const isRevisionMode = ref(false);
 
 // 模拟在线用户数据（后面连接）
 const onlineUsers = ref([
@@ -136,6 +144,17 @@ const showAll = ()=>{
   }
   showSidebar.value = true;
 
+} 
+//别删这两个函数
+const apply =(revisionData)=>{
+  if (yjsdemoRef.value) {
+    yjsdemoRef.value.handleApplyRevision(revisionData)
+  }
+}
+const cancel=(revisionData)=>{
+  if (yjsdemoRef.value) {
+    yjsdemoRef.value.handleRejectRevision(revisionData)
+  }
 }
 
 // 处理添加评论的方法
@@ -151,6 +170,25 @@ const handleAddComment = (commentData) => {
     }
   }
 };
+
+// 处理修订模式切换
+const handleRevisionModeToggle = (mode) => {
+  isRevisionMode.value = mode;
+  
+  // 如果有 yjsdemo 组件，传递修订模式状态
+  if (yjsdemoRef.value) {
+    // 假设 yjsdemo 组件有一个方法来处理修订模式
+    yjsdemoRef.value.setRevisionMode(mode);
+  }
+};
+
+const handleRevisionUpdate = (revisions) => {
+  emits('changeRevision',revisions)
+  revisions.forEach(revision => {
+    console.log(`类型: ${revision.type}, 内容: ${revision.content}`);
+    // 可以进行进一步的处理
+  });
+}
 
 onMounted(() => {
   fetchDocumentContent();
@@ -169,6 +207,10 @@ const saveDocument = (name) => {
       menuRef.value.setLastSaved(new Date());
   }
 };
+defineExpose({
+  apply,
+  cancel
+})
 </script>
 
 <style scoped>

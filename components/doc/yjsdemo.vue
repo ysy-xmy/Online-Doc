@@ -12,7 +12,6 @@ import { useEditorStore } from '../../stores/editorStore.js';
 import {useRoute} from "#vue-router";
 const userStore = useUserStore();
 const userInfo = computed(() => userStore.userInfo);
-const route = useRoute();
 
 // 接收父组件传递的只读状态
 const props = defineProps({
@@ -63,15 +62,110 @@ const currentComment = ref(null);
 const documentStore = useDocStore();
 const documentInfo = useDocStore().documentInfo;
 const usersInfo = useDocStore().usersInfo;
-const emits = defineEmits(["openCommentPanel"]);
-//新添加
-const editorStore = useEditorStore();
-//新添加：定义获取编辑器内容的函数
-const getEditorContent = () => {
-  if (quill) {
-    return quill.root.innerHTML;
+const emits = defineEmits([
+  "openCommentPanel", 
+  "updateRevision"  // 新增这一行
+]);
+const revisionMode = ref(false);
+let oldDocumentState;
+
+let deletedBlotRegistered = false;
+const registerDeletedContentBlot = () => {
+  if (deletedBlotRegistered) return;
+  const Quill = quillModule.value?.default;
+  if (!Quill) return;
+  const Inline = Quill.import('blots/inline');
+  class DeletedContentBlot extends Inline {
+    static create(value) {
+      const node = super.create(value);
+      
+      // 确保数据结构完整
+      const deletedData = {
+        type: 'delete',
+        content: value.content || '',
+        timestamp: value.timestamp || Date.now(),
+        userId: value.userId || userInfo.value.id,
+        hint: value.hint || '删除内容'
+      };
+      
+      // 同时使用 setAttribute 和 dataset
+      node.setAttribute('data-deleted', JSON.stringify(deletedData));
+      node.dataset.deleted = JSON.stringify(deletedData);
+      
+      // 样式保持不变
+      node.style.color = 'red';
+      node.style.textDecoration = 'line-through';
+      node.style.opacity = '1';
+      
+      return node;
+    }
+
+    static value(node) {
+      // 尝试从多个来源读取数据
+      try {
+        return JSON.parse(
+          node.getAttribute('data-deleted') || 
+          node.dataset.deleted
+        );
+      } catch (error) {
+        console.error('解析删除内容失败:', error);
+        return null;
+      }
+    }
   }
-  return null;
+  DeletedContentBlot.blotName = 'deletedContent';
+  DeletedContentBlot.tagName = 's';
+  Quill.register(DeletedContentBlot, true);
+  deletedBlotRegistered = true;
+};
+
+let newContentBlotRegistered = false;
+const registerNewContentBlot = () => {
+  if (newContentBlotRegistered) return;
+  const Quill = quillModule.value?.default;
+  if (!Quill) return;
+  const Inline = Quill.import('blots/inline');
+  class NewContentBlot extends Inline {
+    static create(value) {
+      const node = super.create(value);
+      
+      // 确保数据结构完整
+      const newContentData = {
+        type: 'add',
+        content: value.content || '',
+        timestamp: value.timestamp || Date.now(),
+        userId: value.userId || userInfo.value.id,
+        hint: value.hint || '新增内容'
+      };
+      
+      // 同时使用 setAttribute 和 dataset
+      node.setAttribute('data-new', JSON.stringify(newContentData));
+      node.dataset.new = JSON.stringify(newContentData);
+      
+      // 样式设置
+      node.style.color = 'red';
+      node.style.textDecoration = 'none';
+      
+      return node;
+    }
+
+    static value(node) {
+      // 尝试从多个来源读取数据
+      try {
+        return JSON.parse(
+          node.getAttribute('data-new') || 
+          node.dataset.new
+        );
+      } catch (error) {
+        console.error('解析新增内容失败:', error);
+        return null;
+      }
+    }
+  }
+  NewContentBlot.blotName = 'newContent';
+  NewContentBlot.tagName = 's';
+  Quill.register(NewContentBlot, true);
+  newContentBlotRegistered = true;
 };
 
 // 异步加载依赖
@@ -511,11 +605,12 @@ const initCollaborativeEditor = async () => {
       // 触发 Yjs 更新
       try {
         if (ydoc && ytext) {
+          const delta = quill.getContents();
           ydoc.transact(() => {
             const binding = quill.getModule("y-quill");
             if (binding) {
               binding.ytext.delete(0, binding.ytext.length);
-              binding.ytext.insert(0, quill.root.innerHTML);
+              binding.ytext.insert(0, delta);
             }
           });
         }
@@ -1038,21 +1133,7 @@ const initCollaborativeEditor = async () => {
   // 添加键盘事件监听器（只读模式下禁用键盘输入）
   nextTick(() => {
     if (quill && quill.root) {
-      quill.root.addEventListener("keydown", (event) => {
-        if (props.isReadOnly) {
-          // 允许复制(Ctrl+C/Cmd+C)、粘贴(Ctrl+V/Cmd+V)、选择全文档(Ctrl+A/Cmd+A)
-          if (
-            (event.ctrlKey || event.metaKey) &&
-            (event.key === "c" || event.key === "v" || event.key === "a")
-          ) {
-            return; // 不阻止快捷键
-          }
-          event.preventDefault();
-          event.stopPropagation();
-          return;
-        }
-        handleKeyboardEvent(event);
-      });
+      quill.root.addEventListener("keydown", handleKeyboardEvent, true);
     }
   });
 
@@ -1087,13 +1168,40 @@ const handleSelectionChange = (range, oldRange, source) => {
 };
 
 // 新增键盘事件监听
-const handleKeyboardEvent = (event) => {
-  const toolbar = floatingToolbar.value;
-  if (!toolbar) return;
+const handleKeyboardEvent = async (event) => {
+  if (!revisionMode.value) return;
 
-  // 如果按下删除键（Backspace 或 Delete）
   if (event.key === "Backspace" || event.key === "Delete") {
-    toolbar.classList.remove("active");
+    event.preventDefault();
+    event.stopPropagation();
+
+    let selection = quill.getSelection();
+    if (!selection) return;
+
+    let index = selection.index;
+    let length = selection.length;
+
+    // 无选区时，Backspace 删除前一个字符，Delete 删除后一个字符
+    if (length === 0) {
+      if (event.key === "Backspace" && index > 0) {
+        index = index - 1;
+        length = 1;
+      } else if (event.key === "Delete" && index < quill.getLength() - 1) {
+        length = 1;
+      } else {
+        return;
+      }
+    }
+
+    // 获取被删内容
+    const deletedDelta = quill.getContents(index, length);
+
+    if (length > 0 && index >= 0 && (index + length) <= quill.getLength()) {
+      await handleMarkAsDeleted(index, length);
+    }
+
+    // 取消选区
+    quill.setSelection(index, 0);
   }
 };
 
@@ -1272,11 +1380,12 @@ const insertCommentAtPosition = (commentData) => {
 
   // 显式触发 Yjs 更新
   try {
+    const delta = quill.getContents();
     ydoc.transact(() => {
       const binding = quill.getModule("y-quill");
       if (binding) {
         binding.ytext.delete(0, binding.ytext.length);
-        binding.ytext.insert(0, quill.root.innerHTML);
+        binding.ytext.insert(0, delta);
       }
     });
 
@@ -1288,6 +1397,381 @@ const insertCommentAtPosition = (commentData) => {
   }
 
   return existingCommentData;
+};
+
+// 设置修订模式的方法
+const setRevisionMode = (mode) => {
+  revisionMode.value = mode;
+  if (quill) {
+    if (mode) {
+      // 启用修订模式
+      quill.enable(true);
+      quill.root.classList.add('revision-mode');
+      quill.on('text-change', handleRevisionChange);
+
+      // 补充所有修订内容的按钮
+      nextTick(() => {
+        addRevisionButtons();
+        const revisions = extractRevisions();
+      });
+    } else {
+      // 关闭修订模式
+      quill.root.classList.remove('revision-mode');
+      quill.off('text-change', handleRevisionChange);
+
+      // 移除所有修订按钮
+      removeRevisionButtons();
+    }
+  }
+};
+
+const handleRevisionChange = (delta, oldDelta, source) => {
+  if (source !== 'user' || !revisionMode.value) return;
+
+  let currentIndex = 0;
+
+  delta.ops.forEach((op) => {
+    if (op.retain) {
+      currentIndex += op.retain;
+    } else if (op.insert) {
+      handleAddition(op, currentIndex);
+      currentIndex += op.insert.length;
+    }
+    // 不处理 delete
+  });
+};
+
+async function handleMarkAsDeleted(index, length) {
+  const Quill = quillModule.value.default;
+
+  // 1. 计算合并区间
+  let mergeStart = index;
+  let mergeLen = length;
+
+  // 向前合并
+  while (mergeStart > 0) {
+    const [prevLeaf] = quill.getLeaf(mergeStart - 1);
+    if (
+      prevLeaf &&
+      prevLeaf.parent &&
+      prevLeaf.parent.domNode &&
+      prevLeaf.parent.domNode.dataset.deleted !== undefined
+    ) {
+      const prevLen = prevLeaf.parent.length();
+      mergeStart -= prevLen;
+      mergeLen += prevLen;
+    } else {
+      break;
+    }
+  }
+  // 向后合并
+  let tempIndex = index + length;
+  while (true) {
+    const [nextLeaf] = quill.getLeaf(tempIndex);
+    if (
+      nextLeaf &&
+      nextLeaf.parent &&
+      nextLeaf.parent.domNode &&
+      nextLeaf.parent.domNode.dataset.deleted !== undefined
+    ) {
+      const nextLen = nextLeaf.parent.length();
+      mergeLen += nextLen;
+      tempIndex += nextLen;
+    } else {
+      break;
+    }
+  }
+
+  // 2. 先移除合并区间的所有 deletedContent
+  quill.formatText(mergeStart, mergeLen, 'deletedContent', false);
+
+  // 3. 等待内容刷新
+  await nextTick();
+
+  // 获取删除的文本内容
+  const deletedText = quill.getText(mergeStart, mergeLen);
+
+  // 4. 先整体包裹
+  quill.formatText(mergeStart, mergeLen, 'deletedContent', {
+    type: 'delete',
+    content: deletedText,
+    timestamp: Date.now(),
+    userId: userInfo.value.id,
+    hint: ''
+  });
+
+  await nextTick();
+
+  // 5. 用 DOM 查询最新的 span[data-deleted]，用 Quill.find 获取 Blot，再 getIndex
+  const editor = quill.root;
+  const allSpans = Array.from(editor.querySelectorAll('[data-deleted]'));
+  let found = null;
+  for (const span of allSpans) {
+    const blot = Quill.find(span);
+    if (!blot) continue;
+    const spanIndex = quill.getIndex(blot);
+    if (spanIndex === mergeStart) {
+      found = span;
+      break;
+    }
+  }
+  if (found) {
+    const bounds = quill.getBounds(mergeStart);
+    const foundContent = found.textContent || '';
+    let id =`delete_${Date.now()}`
+    const data = {
+      id: id, // 唯一ID
+      type: 'delete',
+      content: foundContent, // 结合已有内容和新删除的文本
+      timestamp: Date.now(),
+      userId: userInfo.value.id,
+      hint: `删除：${foundContent}`, // 提示信息包含完整的删除内容
+      yPosition: bounds.top, // Y轴坐标
+      range: {
+        index: mergeStart,
+        length: mergeLen
+      }
+    };    
+    // 同时设置 setAttribute 和 dataset
+    found.setAttribute('data-deleted', JSON.stringify(data));
+    found.setAttribute('id', id);
+    found.dataset.deleted = JSON.stringify(data);
+    
+    // 触发 updateRevision 事件，传递完整的修订数组
+    const revisions = extractRevisions();
+    emits('updateRevision', revisions);
+    
+    // 触发 Yjs 更新
+    try {
+      const delta = quill.getContents();
+      ydoc.transact(() => {
+        const binding = quill.getModule("y-quill");
+        if (binding) {
+          binding.ytext.delete(0, binding.ytext.length);
+          binding.ytext.insert(0, delta);
+        }
+      });
+    } catch (error) {
+      console.error("同步 Delta 时出错:", error);
+    }
+  }
+
+  // 6. 移动光标到合并区块起点
+  quill.setSelection(mergeStart, 0, 'silent');
+}
+
+async function handleAddition(op, index) {
+  let content = op.insert;
+  if (content === '\n' || typeof content !== 'string') return;
+
+  const Quill = quillModule.value.default;
+  const Inline = Quill.import('blots/inline');
+
+  class NewContentBlot extends Inline {
+    static create(value) {
+      const node = super.create(value);
+      
+      // 确保数据结构完整
+      const newContentData = {
+        id: value.id || `add_${Date.now()}`, // 使用传入的 ID 或生成新 ID
+        type: 'add',
+        content: value.content || '',
+        timestamp: value.timestamp || Date.now(),
+        userId: value.userId || userInfo.value.id,
+        hint: value.hint || `新增：${value.content || ''}`,
+        yPosition: value.yPosition || null,
+        range: value.range || {
+          index: index,
+          length: (value.content || content).length
+        }
+      };
+      
+      // 同时使用 setAttribute 和 dataset
+      node.setAttribute('data-new', JSON.stringify(newContentData));
+      node.dataset.new = JSON.stringify(newContentData);
+      
+      node.style.color = 'red';
+      node.style.textDecoration = 'none';
+
+      return node;
+    }
+
+    static value(node) {
+      try {
+        return JSON.parse(
+          node.getAttribute('data-new') || 
+          node.dataset.new
+        );
+      } catch (error) {
+        console.error('解析新增内容失败:', error);
+        return null;
+      }
+    }
+  }
+  NewContentBlot.blotName = 'newContent';
+  NewContentBlot.tagName = 's';
+  Quill.register(NewContentBlot, true);
+
+  // 获取编辑器
+  const editor = quill.root;
+  
+  // 1. 计算合并区间
+  let mergeStart = index;
+  let mergeLen = content.length;
+
+  // 向前合并
+  while (mergeStart > 0) {
+    const [prevLeaf] = quill.getLeaf(mergeStart - 1);
+    if (
+      prevLeaf &&
+      prevLeaf.parent &&
+      prevLeaf.parent.domNode &&
+      prevLeaf.parent.domNode.dataset.new !== undefined
+    ) {
+      const prevLen = prevLeaf.parent.length();
+      mergeStart -= prevLen;
+      mergeLen += prevLen;
+    } else {
+      break;
+    }
+  }
+
+  // 向后合并
+  let tempIndex = index + content.length;
+  while (true) {
+    const [nextLeaf] = quill.getLeaf(tempIndex);
+    if (
+      nextLeaf &&
+      nextLeaf.parent &&
+      nextLeaf.parent.domNode &&
+      nextLeaf.parent.domNode.dataset.new !== undefined
+    ) {
+      const nextLen = nextLeaf.parent.length();
+      mergeLen += nextLen;
+      tempIndex += nextLen;
+    } else {
+      break;
+    }
+  }
+
+  // 2. 先移除合并区间的所有 newContent
+  quill.formatText(mergeStart, mergeLen, 'newContent', false);
+
+  // 3. 等待内容刷新
+  await nextTick();
+
+  // 准备新的内容数据
+  const newContentData = {
+    id: `add_${Date.now()}`,
+    type: 'add',
+    content: quill.getText(mergeStart, mergeLen),
+    timestamp: Date.now(),
+    userId: userInfo.value.id,
+    hint: `新增：${quill.getText(mergeStart, mergeLen)}`,
+    yPosition: null,
+    range: {
+      index: mergeStart,
+      length: mergeLen
+    }
+  };
+
+  // 4. 先整体包裹
+  quill.formatText(mergeStart, mergeLen, 'newContent', newContentData);
+
+  await nextTick();
+
+  // 5. 用 DOM 查询最新的 span[data-new]，用 Quill.find 获取 Blot，再 getIndex
+  const allSpans = Array.from(editor.querySelectorAll('[data-new]'));
+  let found = null;
+  for (const span of allSpans) {
+    const blot = Quill.find(span);
+    if (!blot) continue;
+    const spanIndex = quill.getIndex(blot);
+    if (spanIndex === mergeStart) {
+      found = span;
+      break;
+    }
+  }
+
+  // 更新 Y 轴坐标
+  if (found) {
+    const bounds = quill.getBounds(mergeStart);
+    newContentData.yPosition = bounds.top;
+    
+    // 同时设置 setAttribute 和 dataset
+    found.setAttribute('data-new', JSON.stringify(newContentData));
+    found.setAttribute('id', newContentData.id);
+    found.dataset.new = JSON.stringify(newContentData);
+    
+    // 触发 updateRevision 事件，传递完整的修订数组
+    const revisions = extractRevisions();
+    emits('updateRevision', revisions);
+  }
+
+  // 触发 Yjs 更新
+  try {
+    const delta = quill.getContents();
+    ydoc.transact(() => {
+      const binding = quill.getModule("y-quill");
+      if (binding) {
+        binding.ytext.delete(0, binding.ytext.length);
+        binding.ytext.insert(0, delta);
+      }
+    });
+  } catch (error) {
+    console.error("同步 Delta 时出错:", error);
+  }
+
+  // 6. 移动光标到合并区块起点
+  quill.setSelection(mergeStart, 0, 'silent');
+}
+
+const applyRevision = () => {
+  console.log(3333)
+  const revisions = [];
+  const editor = quill.root;
+
+  // 处理新增内容
+  Array.from(editor.querySelectorAll('[data-new]')).forEach(node => {
+    const value = JSON.parse(node.getAttribute('data-new'));
+    revisions.push(value);
+  });
+
+  // 处理删除内容
+  Array.from(editor.querySelectorAll('[data-deleted]')).forEach(node => {
+    const value = JSON.parse(node.getAttribute('data-deleted'));
+    revisions.push(value);
+  });
+
+  // 触发 updateRevision 事件，传递修订数组
+  emits('updateRevision', revisions);
+  
+  setRevisionMode(false);
+};
+
+const cancelRevision = () => {
+  const revisions = [];
+  const editor = quill.root;
+
+  // 处理新增内容
+  Array.from(editor.querySelectorAll('[data-new]')).forEach(node => {
+    const value = JSON.parse(node.getAttribute('data-new'));
+    revisions.push(value);
+  });
+
+  // 处理删除内容
+  Array.from(editor.querySelectorAll('[data-deleted]')).forEach(node => {
+    const value = JSON.parse(node.getAttribute('data-deleted'));
+    revisions.push(value);
+  });
+
+  // 恢复原始文档状态
+  quill.setContents(oldDocumentState);
+  
+  // 触发 updateRevision 事件，传递修订数组
+  emits('updateRevision', revisions);
+  // 重置修订模式
+  setRevisionMode(false);
 };
 
 // 在 initCollaborativeEditor 方法中添加
@@ -1344,9 +1828,14 @@ onMounted(async () => {
 
   // 先加载依赖
   await loadDependencies();
+  registerDeletedContentBlot();
+  registerNewContentBlot();
 
   // 初始化编辑器
   await initCollaborativeEditor();
+
+  // 保存初始文档状态
+  oldDocumentState = quill.getContents();
 });
 
 // 组件卸载时清理
@@ -1390,9 +1879,186 @@ onUnmounted(() => {
 defineExpose({
   getCurrentUserInfo,
   usersInfo,
+  handleApplyRevision,
+  handleRejectRevision,
   insertCommentAtPosition,
   extractComments,
+  setRevisionMode,
 });
+
+function handleApplyRevision(revisionData) {
+  const Quill = quillModule.value.default;
+  
+  // 通过 id 查找节点
+  const node = quill.root.querySelector(`[data-deleted][id="${revisionData.id}"], [data-new][id="${revisionData.id}"]`);
+  
+  if (!node) {
+    console.error(`未找到 ID 为 ${revisionData.id} 的节点`);
+    return;
+  }
+
+  const blot = Quill.find(node);
+  if (!blot) return;
+  
+  const index = quill.getIndex(blot);
+  const length = blot.length();
+
+  if (node.getAttribute('data-new') !== null) {
+    quill.formatText(index, length, 'newContent', false);
+    quill.formatText(index, length, { color: false });
+  } else if (node.getAttribute('data-deleted') !== null) {
+    quill.deleteText(index, length);
+  }
+
+  // 获取完整的修订信息数组
+  const revisions = extractRevisions();
+
+  // 触发 updateRevision 事件，传递完整的修订数组
+  emits('updateRevision', revisions);
+}
+
+function handleRejectRevision(revisionData) {
+  const Quill = quillModule.value.default;
+  
+  // 通过 id 查找节点
+  const node = quill.root.querySelector(`[data-deleted][id="${revisionData.id}"], [data-new][id="${revisionData.id}"]`);
+  
+  if (!node) {
+    console.error(`未找到 ID 为 ${revisionData.id} 的节点`);
+    return;
+  }
+
+  const blot = Quill.find(node);
+  if (!blot) return;
+  
+  const index = quill.getIndex(blot);
+  const length = blot.length();
+
+  if (node.getAttribute('data-new') !== null) {
+    // 对于新增内容，直接删除
+    quill.deleteText(index, length, 'silent');
+  } else if (node.getAttribute('data-deleted') !== null) {
+    const text = revisionData.content;
+    
+    // 删除删除标记
+    quill.deleteText(index, length, 'silent');
+    
+    // 插入原始文本，使用 'silent' 源以避免触发修订
+    quill.insertText(index, text, { color: false }, 'silent');
+  }
+
+  // 获取完整的修订信息数组
+  const revisions = extractRevisions();
+
+  // 触发 updateRevision 事件，传递完整的修订数组
+  emits('updateRevision', revisions);
+
+  // 触发 Yjs 更新
+  try {
+    const delta = quill.getContents();
+    ydoc.transact(() => {
+      const binding = quill.getModule("y-quill");
+      if (binding) {
+        binding.ytext.delete(0, binding.ytext.length);
+        binding.ytext.insert(0, delta);
+      }
+    });
+  } catch (error) {
+    console.error("同步 Delta 时出错:", error);
+  }
+}
+
+
+const getTextFromDelta = (delta, index, length) => {
+  let str = '';
+  let curr = 0;
+  delta.ops.forEach(op => {
+    if (op.insert) {
+      const opStr = typeof op.insert === 'string' ? op.insert : '';
+      if (curr + opStr.length > index && curr < index + length) {
+        const start = Math.max(0, index - curr);
+        const end = Math.min(opStr.length, index + length - curr);
+        str += opStr.slice(start, end);
+      }
+      curr += opStr.length;
+    } else if (op.retain) {
+      curr += op.retain;
+    }
+  });
+  return str;
+};
+
+const extractRevisions = () => {
+  if (!quill) return;
+
+  const editorContent = quill.root;
+  const newContentMarks = editorContent.querySelectorAll('[data-new]');
+  const deletedContentMarks = editorContent.querySelectorAll('[data-deleted]');
+
+  const allRevisions = [];
+
+  // 处理新增内容
+  newContentMarks.forEach((node) => {
+    try {
+      const revisionData = JSON.parse(
+        node.getAttribute('data-new') || 
+        node.dataset.new
+      );
+      
+      // 重新获取最新的 Y 轴坐标
+      const bounds = quill.getBounds(revisionData.range.index);
+      revisionData.yPosition = bounds.top;
+      
+      allRevisions.push({
+        ...revisionData,
+        nodeInfo: {
+          tagName: node.tagName,
+          classList: Array.from(node.classList),
+          attributes: Array.from(node.attributes).map(attr => ({
+            name: attr.name,
+            value: attr.value
+          }))
+        }
+      });
+    } catch (error) {
+      console.error('解析新增内容时出错:', error);
+    }
+  });
+
+  // 处理删除内容
+  deletedContentMarks.forEach((node) => {
+    try {
+      const revisionData = JSON.parse(
+        node.getAttribute('data-deleted') || 
+        node.dataset.deleted
+      );
+      
+      // 重新获取最新的 Y 轴坐标
+      const bounds = quill.getBounds(revisionData.range.index);
+      revisionData.yPosition = bounds.top;
+      
+      allRevisions.push({
+        ...revisionData,
+        nodeInfo: {
+          tagName: node.tagName,
+          classList: Array.from(node.classList),
+          attributes: Array.from(node.attributes).map(attr => ({
+            name: attr.name,
+            value: attr.value
+          }))
+        }
+      });
+    } catch (error) {
+      console.error('解析删除内容时出错:', error);
+    }
+  });
+
+  // 按 Y 轴坐标排序
+  allRevisions.sort((a, b) => (a.yPosition || 0) - (b.yPosition || 0));
+
+  console.log('文档中所有修订:', allRevisions);
+  return allRevisions;
+};
 </script>
 
 <template>
@@ -1572,5 +2238,124 @@ defineExpose({
   opacity: 1;
   transform: scale(1);
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.15);
+}
+
+.revision-mode {
+  background-color: rgba(255, 165, 0, 0.05) !important;
+  transition: background-color 0.3s ease;
+}
+
+.revision-mode .ql-editor {
+  background-color: rgba(255, 165, 0, 0.05) !important;
+  border: 1px dashed rgba(255, 165, 0, 0.3);
+  border-radius: 8px;
+}
+
+.revision-controls {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.revision-mode .ql-editor .ql-newContent {
+  color: red !important;
+}
+
+/* 非修订模式下移除红色 */
+.ql-editor .ql-newContent {
+  color: inherit !important;
+}
+
+.revision-mode .ql-editor .ql-deletedContent {
+  text-decoration: line-through;
+  color: red;
+  opacity: 1;
+}
+
+.revision-floating-box {
+  min-width: 200px;
+  max-width: 320px;
+  background: linear-gradient(90deg, #f8fafc 80%, #e3f6fc 100%);
+  border-left: 5px solid #36b3f7;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(54,179,247,0.10), 0 1.5px 4px rgba(0,0,0,0.06);
+  padding: 12px 16px 12px 14px;
+  font-size: 14px;
+  color: #222;
+  position: absolute;
+  z-index: 2000;
+  pointer-events: auto;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  border-top: 1px solid #e3f6fc;
+  border-bottom: 1px solid #e3f6fc;
+}
+
+.revision-floating-box:hover {
+  box-shadow: 0 8px 24px rgba(54,179,247,0.18), 0 2px 8px rgba(0,0,0,0.10);
+  border-left-color: #1e90ff;
+}
+
+.revision-title {
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #1e90ff;
+  letter-spacing: 1px;
+}
+
+.revision-title:before {
+  content: "📝";
+  margin-right: 6px;
+}
+
+.revision-meta {
+  font-size: 12px;
+  color: #6c757d;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 12px;
+}
+
+.revision-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.revision-apply-btn, .revision-reject-btn {
+  border: none;
+  background: #f0f9ff;
+  border-radius: 4px;
+  padding: 3px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  transition: background 0.2s, color 0.2s;
+  box-shadow: 0 1px 2px rgba(30,144,255,0.04);
+}
+
+.revision-apply-btn {
+  color: #27ae60;
+  background: #eafaf1;
+}
+.revision-apply-btn:hover {
+  background: #d4f5e6;
+  color: #219150;
+}
+
+.revision-reject-btn {
+  color: #e74c3c;
+  background: #fff0f0;
+}
+.revision-reject-btn:hover {
+  background: #ffeaea;
+  color: #c0392b;
+}
+
+.ql-deletedContent {
+  text-decoration: line-through;
+  color: red;
+  opacity: 1;
 }
 </style>

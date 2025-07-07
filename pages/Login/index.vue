@@ -1,73 +1,71 @@
 <template>
-    <div class="login-page-wrapper relative w-full h-full">
+    <div
+        class="login-container flex items-stretch shadow-xl rounded-2xl overflow-hidden"
+    >
+        <!-- 左侧介绍 -->
         <div
-            class="login-container flex items-stretch shadow-2xl rounded-2xl overflow-hidden relative glassmorphism-bg animate-bg z-10"
+            class="login-box-left flex-1 flex flex-col justify-center items-center bg-gradient-to-br from-pink-400 to-pink-200 text-white p-10"
         >
-            <!-- 左侧介绍 -->
-            <div
-                class="login-box-left flex-1 flex flex-col justify-center items-center bg-gradient-to-br from-[#16a085]/70 to-[#2980b9]/70 text-white p-10 backdrop-blur-sm transform-gpu transition-all duration-500 hover:scale-[1.02]"
-            >
-                <h2 class="text-3xl font-bold mb-4 drop-shadow-lg animate-fade-in">
-                    共享协作文档系统
-                </h2>
-                <p class="text-lg opacity-90 mb-6 animate-slide-in-left">
-                    高效协作，轻松管理文档，助力团队成长！
-                </p>
-                <ul class="space-y-2 text-base opacity-80 animate-slide-in-right">
-                    <li class="transform transition-all duration-300 hover:translate-x-2">✅ 实时协作编辑</li>
-                    <li class="transform transition-all duration-300 hover:translate-x-2">✅ 富文本编辑</li>
-                    <li class="transform transition-all duration-300 hover:translate-x-2">✅ 高速不卡顿</li>
-                    <li class="transform transition-all duration-300 hover:translate-x-2">✅ 丰富的文档管理功能</li>
-                </ul>
-            </div>
-            <!-- 右侧登录表单 -->
-            <div
-                class="login-box-right w-[24rem] bg-white/30 backdrop-blur-lg flex flex-col justify-center items-center p-10 glassmorphism-card"
-            >
-                <form class="w-full max-w-sm space-y-6 relative z-10">
-                    <h3 class="text-2xl font-bold text-center mb-2 animate-fade-in">登录账号</h3>
-                    <div class="form-control w-full animate-slide-in-left">
-                        <label class="label">
-                            <span class="label-text">用户名</span>
-                        </label>
-                        <input
-                            type="text"
-                            placeholder="请输入用户名（3-10位，不能包含中文）"
-                            class="input input-bordered w-full glassmorphism-input"
-                            v-model="username"
-                            @input="validateUsername"
-                        />
-                        <div v-if="usernameError" class="text-error text-sm mt-1 animate-shake">
-                            {{ usernameError }}
-                        </div>
+            <h2 class="text-3xl font-bold mb-4 drop-shadow-lg">
+                共享协作文档系统
+            </h2>
+            <p class="text-lg opacity-90 mb-6">
+                高效协作，轻松管理文档，助力团队成长！
+            </p>
+            <ul class="space-y-2 text-base opacity-80">
+                <li>✅ 实时协作编辑</li>
+                <li>✅ 富文本编辑</li>
+                <li>✅ 高速不卡顿</li>
+                <li>✅ 丰富的文档管理功能</li>
+            </ul>
+        </div>
+        <!-- 右侧登录表单 -->
+        <div
+            class="login-box-right w-[24rem] bg-base-100 flex flex-col justify-center items-center p-10"
+        >
+            <form class="w-full max-w-sm space-y-6">
+                <h3 class="text-2xl font-bold text-center mb-2">登录账号</h3>
+                <div class="form-control w-full">
+                    <label class="label">
+                        <span class="label-text">用户名</span>
+                    </label>
+                    <input
+                        type="text"
+                        placeholder="请输入用户名（3-10位，不能包含中文）"
+                        class="input input-bordered w-full"
+                        v-model="username"
+                        @input="validateUsername"
+                    />
+                    <div v-if="usernameError" class="text-error text-sm mt-1">
+                        {{ usernameError }}
                     </div>
-                    <div class="form-control w-full animate-slide-in-right">
-                        <label class="label">
-                            <span class="label-text">密码</span>
-                        </label>
-                        <input
-                            type="password"
-                            placeholder="请输入密码"
-                            class="input input-bordered w-full glassmorphism-input"
-                            v-model="password"
-                        />
-                    </div>
-                    <button
-                        class="btn btn-primary w-full animate-pulse-soft bg-[#16a085] hover:bg-[#2980b9] border-none"
-                        type="button"
-                        @click="handleLogin"
-                        :class="{ 'btn-disabled': isLoading }"
+                </div>
+                <div class="form-control w-full">
+                    <label class="label">
+                        <span class="label-text">密码</span>
+                    </label>
+                    <input
+                        type="password"
+                        placeholder="请输入密码"
+                        class="input input-bordered w-full"
+                        v-model="password"
+                    />
+                </div>
+                <button
+                    class="btn btn-primary w-full"
+                    type="button"
+                    @click="handleLogin"
+                    :class="{ 'btn-disabled': isLoading }"
+                >
+                    <span v-if="isLoading" class="loading loading-spinner"></span>
+                    {{ isLoading ? '登录中...' : '登录' }}
+                </button>
+                <div class="text-center mt-2">
+                    <NuxtLink to="/Login/register" class="link link-primary"
+                        >没有账号？去注册</NuxtLink
                     >
-                        <span v-if="isLoading" class="loading loading-spinner"></span>
-                        {{ isLoading ? '登录中...' : '登录' }}
-                    </button>
-                    <div class="text-center mt-2 animate-fade-in">
-                        <NuxtLink to="/Login/register" class="link hover:text-[#16a085] text-[#2980b9] transition-colors duration-300"
-                            >没有账号？去注册</NuxtLink
-                        >
-                    </div>
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
     </div>
 </template>
@@ -134,8 +132,7 @@ const handleLogin = () => {
                     username: res.data.user.username,
                     nickname: res.data.user.nickname,
                     avatar: res.data.user.avatar,
-                    email: res.data.user.email || '', // 添加 email 字段，如果不存在则使用空字符串
-                    color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+                    email: res.data.user.email || '' // 添加 email 字段，如果不存在则使用空字符串
                 });
 
                 // 跳转到主页面
@@ -177,30 +174,6 @@ const validateUsername = () => {
 
     usernameError.value = "";
 };
-
-// 动态添加粒子
-const addParticles = () => {
-    const wrapperEl = document.querySelector('.login-page-wrapper')
-    if (!wrapperEl) return
-
-    for (let i = 0; i < 50; i++) {
-        const particle = document.createElement('div')
-        particle.classList.add('particle')
-        wrapperEl.appendChild(particle)
-    }
-}
-
-onMounted(() => {
-    addParticles()
-})
-
-onUnmounted(() => {
-    const wrapperEl = document.querySelector('.login-page-wrapper')
-    if (wrapperEl) {
-        const particles = wrapperEl.querySelectorAll('.particle')
-        particles.forEach(particle => particle.remove())
-    }
-})
 </script>
 
 <style scoped>
@@ -412,37 +385,10 @@ onUnmounted(() => {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
-
-.glassmorphism-bg {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-}
-
-.glassmorphism-card {
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(15px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.glassmorphism-input {
-    background: rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    transition: all 0.3s ease;
-}
-
-.glassmorphism-input:focus {
-    background: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
 .login-box-left {
     min-width: 0;
-    transition: all 0.5s ease;
 }
-
 .login-box-right {
     min-width: 0;
 }

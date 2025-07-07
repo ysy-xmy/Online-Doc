@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { workspaceApi, type WorkspaceDTO, type WorkspaceCreateRequest, type WorkspaceUpdateRequest, type WorkspaceSummary } from '~/api/workspace'
 
 interface WorkspaceState {
+  workspaceId: number
   workspaces: WorkspaceDTO[]
   currentWorkspace: WorkspaceDTO | null
   loading: boolean
@@ -16,6 +17,7 @@ interface WorkspaceState {
 
 export const useWorkspaceStore = defineStore('workspace', {
   state: (): WorkspaceState => ({
+    workspaceId: 0,
     workspaces: [],
     currentWorkspace: null,
     loading: false,
@@ -70,6 +72,9 @@ export const useWorkspaceStore = defineStore('workspace', {
         const response = await workspaceApi.getUserWorkspaces(params)
         
         if (response.code === 'SUCCESS') {
+          //打印response.data.workspaces（在这里调用知识库接口列表）
+          // console.log("response.data.workspaces:", response.data.workspaces);
+
           if (params.refresh || params.page === 0) {
             // 刷新或第一页，替换数据
             this.workspaces = response.data.workspaces
@@ -102,6 +107,7 @@ export const useWorkspaceStore = defineStore('workspace', {
         const response = await workspaceApi.getById(id)
         
         if (response.code === 'SUCCESS') {
+
           this.currentWorkspace = response.data
           
           // 更新列表中的对应项

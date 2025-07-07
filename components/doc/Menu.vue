@@ -19,16 +19,14 @@
             </div>
         </div>
 
-        <div class="document-actions">
-            <button
-                class="publish-btn"
-                :class="{ 'published': isPublished }"
-                @click="togglePublishStatus"
-                :disabled="isUpdatingStatus"
-            >
-                <i class="status-icon" :class="isPublished ? 'published' : 'draft'"></i>
-                {{ isPublished ? '已发布' : '发布' }}
-            </button>
+        <div class="revision-mode-toggle">
+            <span class="revision-mode-label">修订模式</span>
+            <input 
+                type="checkbox" 
+                class="toggle toggle-primary" 
+                :checked="isRevisionMode"
+                @change="handleRevisionModeToggle"
+            />
         </div>
 
         <div class="online-users">
@@ -62,7 +60,6 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { useDocumentStore } from "@/stores/document";
-import { documentApi } from "@/api/document";
 import { debounce } from "lodash";
 // 定义props
 const props = defineProps({
@@ -70,37 +67,23 @@ const props = defineProps({
         type: String,
         default: "未命名文档",
     },
-    documentId: {
-        type: [String, Number],
-        required: true,
-    },
-    documentStatus: {
-        type: String,
-        default: "DRAFT",
-    },
 });
 
 // 定义emits
-const emit = defineEmits(["update:documentName", "save", "statusChanged"]);
+const emit = defineEmits([
+    "update:documentName", 
+    "save", 
+    "toggleRevisionMode"
+]);
 
 // 使用 store 中的文档信息
 const documentStore = useDocumentStore();
 const documentInfo = documentStore.documentInfo;
 
+console.log("test1", documentInfo);
+
 // 从 store 获取用户列表
 const onlineUsers = computed(() => documentStore.allUsersList);
-
-// 发布状态相关
-const isPublished = ref(props.documentStatus === 'PUBLISHED');
-const isUpdatingStatus = ref(false);
-
-// 监听props中的documentStatus变化
-watch(
-    () => props.documentStatus,
-    (newStatus) => {
-        isPublished.value = newStatus === 'PUBLISHED';
-    }
-);
 
 // 监听props变化
 watch(
@@ -161,8 +144,36 @@ const debouncedSaveDocumentTitle = debounce((data) => {
 const saveDocumentTitle = (data) => {
     debouncedSaveDocumentTitle(data);
 };
+const { $axios } = useNuxtApp();
+const router = useRouter();
+
+// 防抖版本的保存文档标题函数
+const debouncedSaveDocumentTitle = debounce((data) => {
+    console.log(99999999);
+
+    $axios(`api/documents/${router.currentRoute.value.params.id}`, {
+        method: "PUT",
+        body: data,
+    }).then((res) => {
+        documentStore.updateDocumentName(res.data.title);
+    });
+}, 1000); // 1秒防抖
+
+const saveDocumentTitle = (data) => {
+    debouncedSaveDocumentTitle(data);
+};
 // 自动保存功能（防抖版本）
 const autoSave = () => {
+    // console.log("newName", documentInfo.name);
+    // console.log("documentInfo.id", );
+    const data = {
+        title: documentInfo.name,
+        content: "",
+        contentJson: "新JSON内容",
+        status: "PUBLISHED",
+    };
+
+    saveDocumentTitle(data);
     // console.log("newName", documentInfo.name);
     // console.log("documentInfo.id", );
     const data = {
@@ -234,6 +245,15 @@ defineExpose({
         documentStore.updateLastSaved(date);
     },
 });
+
+// 添加 ref 和 emit
+const isRevisionMode = ref(false);
+
+// 监听修订模式切换
+const handleRevisionModeToggle = () => {
+    isRevisionMode.value = !isRevisionMode.value;
+    emit("toggleRevisionMode", isRevisionMode.value);
+};
 </script>
 
 <style scoped>
@@ -246,63 +266,6 @@ defineExpose({
     border-bottom: 1px solid #e9ecef;
     flex-shrink: 0; /* 防止头部被压缩 */
     width: 100%;
-}
-
-.document-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.publish-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: white;
-    color: #374151;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.publish-btn:hover {
-    background: #f9fafb;
-    border-color: #9ca3af;
-}
-
-.publish-btn.published {
-    background: #10b981;
-    border-color: #10b981;
-    color: white;
-}
-
-.publish-btn.published:hover {
-    background: #059669;
-    border-color: #059669;
-}
-
-.publish-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.status-icon {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-}
-
-.status-icon.draft {
-    background: #f59e0b;
-}
-
-.status-icon.published {
-    background: white;
 }
 
 .document-info {
@@ -377,6 +340,46 @@ defineExpose({
     height: 8px;
     border-radius: 50%;
     background-color: currentColor;
+}
+
+.revision-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.revision-mode-label {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.toggle {
+    width: 40px;
+    height: 20px;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+}
+
+.toggle.toggle-primary {
+    background-color: #007bff;
+}
+
+.toggle.toggle-primary::before {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s;
+}
+
+.toggle.toggle-primary.checked::before {
+    transform: translateX(20px);
 }
 
 .online-users {

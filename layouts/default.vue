@@ -4,12 +4,12 @@
         <Sidebar />
 
         <!-- 主内容区 -->
-        <div class="flex-1 flex flex-col shadow-lg w-0">
+        <div class="flex-1 flex flex-col shadow-lg">
             <!-- 顶部导航栏 -->
             <div
                 class="navbar bg-base-100 border-b border-base-content/10 px-4 py-2 shadow-sm"
             >
-                <div class="flex-1 relative">
+                <div class="flex-1">
                     <div class="form-control">
                         <div class="input-group">
                             <input
@@ -154,9 +154,9 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- 主题切换开关 -->
                 <ThemeChange />
+                <div class="text-base-content text-xl mx-2 text-bold">{{ userInfo.username }}</div>
 
               <div class="flex-none">
 
@@ -336,6 +336,8 @@
 </template>
 
 <script setup>
+import { useCookie } from "#app";
+import { ref, onMounted, computed } from "vue";
 import { useCookie } from "#app";
 import { ref, onMounted, computed } from "vue";
 import Sidebar from "~/components/layouts/Sidebar.vue";
@@ -715,19 +717,6 @@ const formatDate = (dateString) => {
   }
 }
 </script>
-
-<style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.modal-backdrop {
-  background-color: rgba(0, 0, 0, 0.3);
-}
-</style>
 
 <style>
 .table th:first-child {
